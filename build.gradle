@@ -1,0 +1,139 @@
+import groovyx.net.http.RESTClient
+import groovyx.net.http.HTTPBuilder
+import groovyx.net.http.Method
+import groovyx.net.http.ContentType
+
+buildscript {
+    ext {
+        grailsVersion = project.grailsVersion
+    }
+    repositories {
+        mavenLocal()
+        maven { url "https://repo.grails.org/grails/core" }
+    }
+    dependencies {
+        classpath "org.grails:grails-gradle-plugin:$grailsVersion"
+        classpath 'com.bertramlabs.plugins:asset-pipeline-gradle:2.1.1'
+        classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
+        classpath 'org.slf4j:slf4j-log4j12:1.7.7'
+        classpath 'org.slf4j:jcl-over-slf4j:1.7.7'
+    }
+}
+
+plugins {
+    id "io.spring.dependency-management" version "0.4.0.RELEASE"
+}
+
+version "0.1"
+group "pet.store"
+
+apply plugin: "spring-boot"
+apply plugin: "war"
+apply plugin: "asset-pipeline"
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: "org.grails.grails-web"
+apply plugin: "org.grails.grails-gsp"
+
+ext {
+    grailsVersion = project.grailsVersion
+    gradleWrapperVersion = project.gradleWrapperVersion
+}
+
+assets {
+    minifyJs = true
+    minifyCss = true
+}
+
+repositories {
+    mavenLocal()
+    maven { url "https://repo.grails.org/grails/core" }
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.grails:grails-bom:$grailsVersion"
+    }
+    applyMavenExclusions false
+}
+
+dependencies {
+    compile "org.springframework.boot:spring-boot-starter-logging"
+    compile "org.springframework.boot:spring-boot-starter-actuator"
+    compile "org.springframework.boot:spring-boot-autoconfigure"
+    compile "org.springframework.boot:spring-boot-starter-tomcat"
+    compile "org.grails:grails-dependencies"
+    compile "org.grails:grails-web-boot"
+
+    compile "org.grails.plugins:hibernate"
+    compile "org.grails.plugins:cache"
+    compile "org.hibernate:hibernate-ehcache"
+
+    runtime "org.grails.plugins:asset-pipeline"
+    runtime "org.grails.plugins:scaffolding"
+
+    testCompile "org.grails:grails-plugin-testing"
+    testCompile "org.grails.plugins:geb"
+
+    // Note: It is recommended to update to a more robust driver (Chrome, Firefox etc.)
+    testRuntime 'org.seleniumhq.selenium:selenium-htmlunit-driver:2.44.0'
+
+    console "org.grails:grails-console"
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = gradleWrapperVersion
+}
+
+task emptyPom {
+    outputs.file('build/pom.xml')
+    doLast {
+        new File('build/pom.xml') << """
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>pet.store</groupId>
+  <artifactId>placeholder</artifactId>
+  <packaging>jar</packaging>
+  <version>1.0</version>
+  <name>Pet Store</name>
+  <build>
+    <finalName>placeholder</finalName>
+  </build>
+</project>
+"""
+    }
+}
+
+distTar.dependsOn emptyPom
+distTar.from 'Procfile'
+distTar.from 'build/pom.xml'
+
+task deployToHeroku(dependsOn: distTar) {
+    description = 'Deploy the application to Heroku'
+    doLast {
+        RESTClient heroku = new RESTClient("https://api.heroku.com/apps/${System.getenv("HEROKU_APP_NAME")}/")
+        heroku.headers['Authorization'] = "Bearer ${System.getenv('HEROKU_AUTH_TOKEN')}"
+        heroku.headers['Accept'] = 'application/vnd.heroku+json; version=3'
+
+        // Get a location to store the source
+        def sources = heroku.post(path: 'sources')
+        def put_url = sources.data.source_blob.put_url
+        def get_url = sources.data.source_blob.get_url
+
+        // Upload the source
+        new HTTPBuilder().request(put_url, Method.PUT, ContentType.ANY) {
+            headers.'Content-Length' = distTar.archivePath.length()
+            headers.'Content-Type' = null
+            requestContentType = 'application/octet-stream'
+            body = distTar.archivePath.newInputStream()
+        }
+
+        // Start the build
+        heroku.post(path: 'builds', requestContentType: 'applicaton/json',
+            body: ['source_blob': ['url':get_url, 'version': project.version ]]
+        )
+
+    }
+    onlyIf { System.getenv('HEROKU_AUTH_TOKEN') && System.getenv('HEROKU_APP_NAME') }
+}

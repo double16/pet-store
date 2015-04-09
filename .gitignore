@@ -1,0 +1,9 @@
+setenv.sh
+/build
+/out
+*.iml
+*.ipr
+*.iws
+*.log
+/.idea
+/.gradle
