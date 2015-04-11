@@ -85,55 +85,87 @@ task wrapper(type: Wrapper) {
     gradleVersion = gradleWrapperVersion
 }
 
-task emptyPom {
-    outputs.file('build/pom.xml')
+// https://devcenter.heroku.com/articles/platform-api-deploying-slugs
+// http://lang-jvm.s3.amazonaws.com/jdk/openjdk1.8.0_40-cedar14.tar.gz
+
+ext {
+    jdkCachedir = "${gradle.getGradleUserHomeDir()}/caches/jdk"
+    jdkFilename = "openjdk1.8.0_40-cedar14.tar.gz"
+    jdkPath = "${jdkCachedir}/${jdkFilename}"
+}
+
+task download_openjdk8() {
+    new File(jdkCachedir).mkdirs()
+    outputs.file(jdkPath)
     doLast {
-        new File('build/pom.xml') << """
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>pet.store</groupId>
-  <artifactId>placeholder</artifactId>
-  <packaging>jar</packaging>
-  <version>1.0</version>
-  <name>Pet Store</name>
-  <build>
-    <finalName>placeholder</finalName>
-  </build>
-</project>
-"""
+        ant.get(src: "http://lang-jvm.s3.amazonaws.com/jdk/${jdkFilename}", dest: jdkPath, verbose: "on", usetimestamp: "on")
     }
 }
 
-distTar.dependsOn emptyPom
-distTar.from 'Procfile'
-distTar.from 'build/pom.xml'
+// profile copied from https://github.com/heroku/heroku-buildpack-jvm-common/blob/master/bin/java
+task slug_profile {
+    outputs.file('build/jvmcommon.sh')
+    doLast {
+        def file = new File('build/jvmcommon.sh')
+        file.text = """
+export JAVA_HOME="\$HOME/.jdk"
+export PATH="\$JAVA_HOME/bin:\$PATH"
+limit=\$(ulimit -u)
+case \$limit in
+256)   # 1X Dyno
+  default_java_opts="-Xmx384m -Xss512k"
+  ;;
+512)   # 2X Dyno
+  default_java_opts="-Xmx768m"
+  ;;
+32768) # PX Dyno
+  default_java_opts="-Xmx4g"
+  ;;
+*)
+  default_java_opts="-Xmx384m -Xss512k"
+  ;;
+esac
 
-task deployToHeroku(dependsOn: distTar) {
+export JAVA_TOOL_OPTIONS=\${JAVA_TOOL_OPTIONS:-"\${default_java_opts} -Dfile.encoding=UTF-8 -Djava.rmi.server.useCodebaseOnly=true"}
+"""
+        file.setExecutable(true, false)
+    }
+}
+task slug(type: Tar, dependsOn: [ bootRepackage, download_openjdk8, slug_profile ]) {
+    description = "Package application into Heroku slug"
+    appendix = "slug"
+    compression = Compression.GZIP
+    into("app") {
+        from jar.archivePath
+    }
+    into("app/.jdk") {
+        from tarTree(resources.gzip(jdkPath))
+    }
+    into("app/.profile.d") {
+        from "build/jvmcommon.sh"
+    }
+}
+
+task deployToHeroku(dependsOn: slug) {
     description = 'Deploy the application to Heroku'
     doLast {
         RESTClient heroku = new RESTClient("https://api.heroku.com/apps/${System.getenv("HEROKU_APP_NAME")}/")
         heroku.headers['Authorization'] = "Bearer ${System.getenv('HEROKU_AUTH_TOKEN')}"
         heroku.headers['Accept'] = 'application/vnd.heroku+json; version=3'
 
-        // Get a location to store the source
-        def sources = heroku.post(path: 'sources')
-        def put_url = sources.data.source_blob.put_url
-        def get_url = sources.data.source_blob.get_url
+        // create the slug
+        def slug = heroku.post(path: 'slugs', requestContentType: "application/json",
+                body: ["process_types": [ "web": "java -jar \$JAVA_OPTS ${project.tasks.jar.archivePath.name}"]])
 
-        // Upload the source
-        new HTTPBuilder().request(put_url, Method.PUT, ContentType.ANY) {
-            headers.'Content-Length' = distTar.archivePath.length()
-            headers.'Content-Type' = null
+        // upload the slug
+        new HTTPBuilder().request(slug.data.blob.url, Method.PUT, ContentType.ANY) {
             requestContentType = 'application/octet-stream'
-            body = distTar.archivePath.newInputStream()
+            body = slug.data.archivePath.newInputStream()
         }
 
-        // Start the build
-        heroku.post(path: 'builds', requestContentType: 'applicaton/json',
-            body: ['source_blob': ['url':get_url, 'version': project.version ]]
-        )
-
+        // release the slug
+        heroku.post(path: 'releases', requestContentType: 'application/json',
+            body:[ 'slug': slug.data.id ])
     }
     onlyIf { System.getenv('HEROKU_AUTH_TOKEN') && System.getenv('HEROKU_APP_NAME') }
 }
