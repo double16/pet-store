@@ -95,6 +95,8 @@ ext {
 }
 
 task download_openjdk8() {
+    description = "Download OpenJDK 8 for the slug"
+    group = "distribution"
     new File(jdkCachedir).mkdirs()
     outputs.file(jdkPath)
     doLast {
@@ -104,6 +106,8 @@ task download_openjdk8() {
 
 // profile copied from https://github.com/heroku/heroku-buildpack-jvm-common/blob/master/bin/java
 task slug_profile {
+    description = "Profile script for slug that configures Java"
+    group = "distribution"
     outputs.file('build/jvmcommon.sh')
     doLast {
         def file = new File('build/jvmcommon.sh')
@@ -133,6 +137,7 @@ export JAVA_TOOL_OPTIONS=\${JAVA_TOOL_OPTIONS:-"\${default_java_opts} -Dfile.enc
 }
 task slug(type: Tar, dependsOn: [ bootRepackage, download_openjdk8, slug_profile ]) {
     description = "Package application into Heroku slug"
+    group = "distribution"
     appendix = "slug"
     compression = Compression.GZIP
     into("app") {
@@ -148,6 +153,7 @@ task slug(type: Tar, dependsOn: [ bootRepackage, download_openjdk8, slug_profile
 
 task deployToHeroku(dependsOn: slug) {
     description = 'Deploy the application to Heroku'
+    group = "distribution"
     doLast {
         RESTClient heroku = new RESTClient("https://api.heroku.com/apps/${System.getenv("HEROKU_APP_NAME")}/")
         heroku.headers['Authorization'] = "Bearer ${System.getenv('HEROKU_AUTH_TOKEN')}"
