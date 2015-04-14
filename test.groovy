@@ -34,7 +34,7 @@ def file = new File("build/distributions/pet-store-slug-0.1.tgz")
 
         // upload the slug
 	System.err.println "Uploading ${file} to ${slug.data.blob.url}"
-        def res = new DefaultHttpClient().execute(new HttpPut(URI: slug.data.blob.url, entity: new FileEntity(file)))
+        def res = new DefaultHttpClient().execute(new HttpPut(URI: new URI(slug.data.blob.url), entity: new FileEntity(file)))
         if (res.statusLine.statusCode > 399) {
             throw new IOException(re.statusLine.reasonPhrase)
         }
