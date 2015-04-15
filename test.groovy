@@ -29,7 +29,7 @@ def file = new File("build/distributions/pet-store-slug-0.1.tgz")
 
         // create the slug
         def slug = heroku.post(path: 'slugs', requestContentType: "application/json",
-                body: ["process_types": [ "web": "java -jar \$JAVA_OPTS pet-store-0.1.jar"]])
+                body: ["process_types": [ "web": "java \$JAVA_OPTS -jar pet-store-0.1.jar host=0.0.0.0 port=\$PORT"]])
 	System.err.println "Created slug ${slug.data.id}"
 
         // upload the slug
