@@ -111,9 +111,16 @@ task emptyPom {
     }
 }
 
-distTar.dependsOn emptyPom
-distTar.from 'Procfile'
-distTar.from 'build/pom.xml'
+task herokuSources(type: Tar, dependsOn: [emptyPom, bootRepackage]) {
+    description = "Package built application into Heroku sources for faster deployment"
+    group = "distribution"
+    appendix = "heroku"
+    compression = Compression.GZIP
+    from jar.archivePath
+    from 'Procfile'
+    from 'system.properties'
+    from 'build/pom.xml'
+}
 
 /**
  * Building a slug:
@@ -184,8 +191,8 @@ task slug(type: Tar, dependsOn: [ bootRepackage, download_openjdk8, slug_profile
     }
 }
 
-task deployToHeroku(dependsOn: slug) {
-    description = 'Deploy the application to Heroku'
+task deploySlugToHeroku(dependsOn: slug) {
+    description = 'Deploy the application to Heroku via slug'
     group = "distribution"
     doLast {
         RESTClient heroku = new RESTClient("https://api.heroku.com/apps/${System.getenv("HEROKU_APP_NAME")}/")
@@ -209,6 +216,35 @@ task deployToHeroku(dependsOn: slug) {
         heroku.post(path: 'releases', requestContentType: 'application/json',
             body:[ 'slug': slug.data.id ])
         logger.info("Released slug ${slug.data.id}")
+    }
+    onlyIf { System.getenv('HEROKU_AUTH_TOKEN') && System.getenv('HEROKU_APP_NAME') }
+}
+
+task deployToHeroku(dependsOn: herokuSources) {
+    description = 'Deploy the application to Heroku'
+    group = "distribution"
+    doLast {
+        RESTClient heroku = new RESTClient("https://api.heroku.com/apps/${System.getenv("HEROKU_APP_NAME")}/")
+        heroku.headers['Authorization'] = "Bearer ${System.getenv('HEROKU_AUTH_TOKEN')}"
+        heroku.headers['Accept'] = 'application/vnd.heroku+json; version=3'
+
+        // upload sources
+        def sources = heroku.post(path: 'sources')
+        def put_url = sources.data.source_blob.put_url
+        def get_url = sources.data.source_blob.get_url
+
+        // upload sources
+        logger.info("Uploading ${herokuSources.archivePath} to ${put_url}")
+        def res = new DefaultHttpClient().execute(new HttpPut(URI: new URI(put_url), entity: new FileEntity(herokuSources.archivePath)))
+        if (res.statusLine.statusCode > 399) {
+            throw new IOException(res.statusLine.reasonPhrase)
+        }
+
+        // start the build
+        logger.info("Building ${get_url}")
+        heroku.post(path: 'builds', requestContentType: 'application/json',
+            body: ['source_blob': ['url':get_url, 'version': "git rev-parse HEAD".execute().text.trim() ]]
+        )
     }
     onlyIf { System.getenv('HEROKU_AUTH_TOKEN') && System.getenv('HEROKU_APP_NAME') }
 }
