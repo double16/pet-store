@@ -194,7 +194,8 @@ task deployToHeroku(dependsOn: slug) {
 
         // create the slug
         def slug = heroku.post(path: 'slugs', requestContentType: "application/json",
-                body: ["process_types": [ "web": "java \$JAVA_OPTS -jar ${project.tasks.jar.archivePath.name} host=0.0.0.0 port=\$PORT".toString()]])
+                body: ["process_types": [ "web": "java \$JAVA_OPTS -jar ${project.tasks.jar.archivePath.name} host=0.0.0.0 port=\$PORT".toString()],
+                "stack": "cedar-14"])
         logger.info("Created slug ${slug.data.id}")
 
         // upload the slug
