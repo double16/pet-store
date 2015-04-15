@@ -164,12 +164,12 @@ task deployToHeroku(dependsOn: slug) {
 
         // create the slug
         def slug = heroku.post(path: 'slugs', requestContentType: "application/json",
-                body: ["process_types": [ "web": "java -jar \$JAVA_OPTS ${project.tasks.jar.archivePath.name}"]])
+                body: ["process_types": [ "web": "java \$JAVA_OPTS -jar ${project.tasks.jar.archivePath.name} host=0.0.0.0 port=\$PORT"]])
         logger.info("Created slug ${slug.data.id}")
 
         // upload the slug
         logger.info("Uploading ${slug.data.archivePath} to ${slug.data.blob.url}")
-        def res = new DefaultHttpClient().execute(new HttpPut(URI: slug.data.blob.url, entity: new FileEntity(slug.data.archivePath)))
+        def res = new DefaultHttpClient().execute(new HttpPut(URI: new URI(slug.data.blob.url), entity: new FileEntity(slug.data.archivePath)))
         if (res.statusLine.statusCode > 399) {
             throw new IOException(re.statusLine.reasonPhrase)
         }
