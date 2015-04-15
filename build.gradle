@@ -88,6 +88,36 @@ task wrapper(type: Wrapper) {
     gradleVersion = gradleWrapperVersion
 }
 
+/**
+ * Uploading a source tarball with the compiled jar and an empty maven build to make the Java buildpack happy
+ */
+task emptyPom {
+    outputs.file('build/pom.xml')
+    doLast {
+        new File('build/pom.xml') << """
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>pet.store</groupId>
+  <artifactId>placeholder</artifactId>
+  <packaging>jar</packaging>
+  <version>1.0</version>
+  <name>Pet Store</name>
+  <build>
+    <finalName>placeholder</finalName>
+  </build>
+</project>
+"""
+    }
+}
+
+distTar.dependsOn emptyPom
+distTar.from 'Procfile'
+distTar.from 'build/pom.xml'
+
+/**
+ * Building a slug:
+ */
 // https://devcenter.heroku.com/articles/platform-api-deploying-slugs
 // http://lang-jvm.s3.amazonaws.com/jdk/openjdk1.8.0_40-cedar14.tar.gz
 

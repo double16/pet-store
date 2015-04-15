@@ -21,7 +21,7 @@ import org.apache.http.entity.FileEntity
 Logger.getLogger("org.apache.http.headers").setLevel(Level.DEBUG)
 Logger.getLogger("org.apache.http.wire").setLevel(Level.DEBUG)
 
-def file = new File("build/distributions/pet-store-slug-0.1.tgz")
+def file = new File("/tmp/pet-store-slug-0.1.tar.gz")
 
         RESTClient heroku = new RESTClient("https://api.heroku.com/apps/${System.getenv("HEROKU_APP_NAME")}/")
         heroku.headers['Authorization'] = "Bearer ${System.getenv('HEROKU_AUTH_TOKEN')}"
@@ -36,7 +36,7 @@ def file = new File("build/distributions/pet-store-slug-0.1.tgz")
 	System.err.println "Uploading ${file} to ${slug.data.blob.url}"
         def res = new DefaultHttpClient().execute(new HttpPut(URI: new URI(slug.data.blob.url), entity: new FileEntity(file)))
         if (res.statusLine.statusCode > 399) {
-            throw new IOException(re.statusLine.reasonPhrase)
+            throw new IOException(res.statusLine.reasonPhrase)
         }
 
         // release the slug
