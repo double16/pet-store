@@ -38,6 +38,10 @@ The test command:
 
 The deployment command:
 ```shell
+# We need to repeat the setup commands because they aren't suppose to carry over from the test setup commands
+export TERM=dumb
+export GRADLE_USER_HOME="${HOME}/cache/gradle/"
+jdk_switcher use oraclejdk8
 ./gradlew deployToHeroku
 check_url http://${HEROKU_APP_NAME}.herokuapp.com
 ```
