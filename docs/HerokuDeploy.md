@@ -45,10 +45,11 @@ Instead of using Heroku's git repo to push the source code we're going to build 
 our fat jar and push it using [Heroku's Platform API](https://devcenter.heroku.com/articles/build-and-release-using-the-api).
 The Platform API provides all of the functionality of Heroku in
 a REST interface so it can be used programmatically. The steps we'll take are:
+
 1. Build a source tarball containing the fat jar and other files Heroku needs (explained below)
-1. Create an endpoint on Heroku to host the tarball via the ["sources"](https://devcenter.heroku.com/articles/build-and-release-using-the-api#sources-endpoint) REST service
-1. [Upload](https://devcenter.heroku.com/articles/build-and-release-using-the-api#use-the-source_blob-put_url-to-upload-data) the tarball
-1. Create a [build](https://devcenter.heroku.com/articles/build-and-release-using-the-api#create-a-build-using-source_blob-get_url) from the tarball
+2. Create an endpoint on Heroku to host the tarball via the ["sources"](https://devcenter.heroku.com/articles/build-and-release-using-the-api#sources-endpoint) REST service
+3. [Upload](https://devcenter.heroku.com/articles/build-and-release-using-the-api#use-the-source_blob-put_url-to-upload-data) the tarball
+4. Create a [build](https://devcenter.heroku.com/articles/build-and-release-using-the-api#create-a-build-using-source_blob-get_url) from the tarball
 
 # Faking a Java Build
 We're going to do a "fake" Java build on Heroku with an already built fat jar. This will make the build time nearly
