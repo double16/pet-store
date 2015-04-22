@@ -49,7 +49,7 @@ check_url http://${HEROKU_APP_NAME}.herokuapp.com
 The environment:
 ```
 HEROKU_AUTH_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxx
-HEROKU_APP_NAME=arcane-savannah-3227
+HEROKU_APP_NAME=arcane-savannah-7223
 ```
 
 Keep as much code in build.gradle as possible. This allows local testing and consistent behavior when using multiple CI
