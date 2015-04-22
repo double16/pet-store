@@ -112,7 +112,8 @@ about an hour, which is plenty for our build.
 
 <script src="https://gist.github.com/double16/b58fca44e009cce82076.js?file=heroku-sources.gradle"></script>
 
-I've found uploading to be very specific, but Groovy makes it concise.
+I've found uploading to be very specific and tried several ways of using HTTPBuilder to get it working. Using
+DefaultHttpClient directly works and Groovy makes it concise.
 
 <script src="https://gist.github.com/double16/b58fca44e009cce82076.js?file=heroku-upload.gradle"></script>
 
