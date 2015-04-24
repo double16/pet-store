@@ -164,3 +164,50 @@ task npmCacheConfig(type: NpmTask) {
     outputs.files file(npmCacheDir)
     args = [ 'config', 'set', 'cache', npmCacheDir ]
 }
+
+task npmPackages(type: NpmTask, dependsOn: npmCacheConfig) {
+    description = "Install Node.js packages"
+    args = [ 'install' ]
+    inputs.files file('package.json')
+    outputs.files file('node_modules')
+}
+
+task bowerInstall(type: NodeTask) {
+    script = file('node_modules/bower/bin/bower')
+    args = ["--config.storage.cache=${gradle.getGradleUserHomeDir()}/caches/bower/cache",
+            "--config.storage.packages=${gradle.getGradleUserHomeDir()}/caches/bower/packages",
+            "--config.storage.registry=${gradle.getGradleUserHomeDir()}/caches/bower/registry",
+            'install']
+    inputs.files file('bower.json')
+    outputs.files file('bower_components')
+    dependsOn npmPackages
+}
+
+task bowerSyncJavascript(type: Sync) {
+    from 'bower_components'
+    into "grails-app/assets/javascripts/bower_components"
+    exclude '**/*.min.js'
+    exclude '**/angular*/index.js'
+    exclude '**/angular*/ng*.js'
+    include 'jquery/dist/jquery.js'
+    include 'angular*/**/*.js'
+    dependsOn bowerInstall
+}
+
+task bowerSyncStylesheets(type: Sync) {
+    from 'bower_components'
+    into "grails-app/assets/stylesheets/bower_components"
+    include 'angular*/**/*.css'
+    include 'animate.css/animate.css'
+    dependsOn bowerInstall
+}
+
+task bowerPackages() {
+    dependsOn bowerSyncJavascript, bowerSyncStylesheets
+}
+
+processResources.dependsOn bowerPackages
+assetCompile.dependsOn bowerPackages
+
+clean.delete << file('grails-app/assets/javascripts/bower_components')
+clean.delete << file('grails-app/assets/stylesheets/bower_components')

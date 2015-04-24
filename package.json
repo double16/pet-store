@@ -1,0 +1,15 @@
+{
+  "engines": {
+    "node": "0.12.x"
+  },
+  "name": "pet-store",
+  "private": false,
+  "version": "0.1.0",
+  "description": "",
+  "repository": "https://github.com/double16/pet-store",
+  "license": "MIT",
+  "main": "",
+  "dependencies": {
+    "bower": "^1.4.0"
+  }
+}
