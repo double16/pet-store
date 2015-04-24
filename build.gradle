@@ -18,6 +18,7 @@ buildscript {
         classpath "org.grails:grails-gradle-plugin:$grailsVersion"
         classpath 'com.bertramlabs.plugins:asset-pipeline-gradle:2.1.1'
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
+        classpath 'com.moowork.gradle:gradle-node-plugin:0.9'
     }
 }
 
@@ -35,6 +36,7 @@ apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: "org.grails.grails-web"
 apply plugin: "org.grails.grails-gsp"
+apply plugin: "com.moowork.node"
 
 ext {
     grailsVersion = project.grailsVersion
@@ -44,6 +46,12 @@ ext {
 assets {
     minifyJs = true
     minifyCss = true
+}
+
+node {
+    version = '0.12.2'
+    npmVersion = '2.7.5'
+    download = true
 }
 
 repositories {
@@ -148,4 +156,11 @@ task deployToHeroku(dependsOn: herokuSources) {
         )
     }
     onlyIf { System.getenv('HEROKU_AUTH_TOKEN') && System.getenv('HEROKU_APP_NAME') }
+}
+
+task npmCacheConfig(type: NpmTask) {
+    description = "Configure the NPM cache"
+    def npmCacheDir = "${gradle.getGradleUserHomeDir()}/caches/npm"
+    outputs.files file(npmCacheDir)
+    args = [ 'config', 'set', 'cache', npmCacheDir ]
 }
