@@ -4,7 +4,7 @@ Using Gradle and Bower to Manage JS/CSS Dependencies
 [Gradle](http://gradle.org) (and other build systems) have done a good job of managing classpath dependencies. They are effective at pulling
 new versions of packages to get bug fixes, et al and including dependencies in packaging. JavaScript, stylesheets and the like also have tools
 to manage dependencies but are not first class citizens with classpath dependencies. [Bower](http://bower.io) is one tool that handles
-dependencies like JavaScript and stylesheets (and others as well). This post will show you a way to leverage Bower to
+dependencies like JavaScript and stylesheets. This post will show you a way to leverage Bower to
 manage those dependencies using Gradle tasks.
 
 There are other solutions that handle the dependency problem. For example, there are [Grails](http://grails.org) plugins for a few popular
