@@ -1,7 +1,4 @@
 import groovyx.net.http.RESTClient
-import groovyx.net.http.HTTPBuilder
-import groovyx.net.http.Method
-import groovyx.net.http.ContentType
 import org.apache.http.impl.client.DefaultHttpClient
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.FileEntity
@@ -18,6 +15,7 @@ buildscript {
         classpath "org.grails:grails-gradle-plugin:$grailsVersion"
         classpath 'com.bertramlabs.plugins:asset-pipeline-gradle:2.1.1'
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
+        classpath 'com.moowork.gradle:gradle-node-plugin:0.9'
     }
 }
 
@@ -35,6 +33,7 @@ apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: "org.grails.grails-web"
 apply plugin: "org.grails.grails-gsp"
+apply plugin: "com.moowork.node"
 
 ext {
     grailsVersion = project.grailsVersion
@@ -44,6 +43,12 @@ ext {
 assets {
     minifyJs = true
     minifyCss = true
+}
+
+node {
+    version = '0.12.2'
+    npmVersion = '2.7.5'
+    download = true
 }
 
 repositories {
@@ -149,3 +154,59 @@ task deployToHeroku(dependsOn: herokuSources) {
     }
     onlyIf { System.getenv('HEROKU_AUTH_TOKEN') && System.getenv('HEROKU_APP_NAME') }
 }
+
+task npmCacheConfig(type: NpmTask) {
+    description = "Configure the NPM cache"
+    def npmCacheDir = "${gradle.getGradleUserHomeDir()}/caches/npm"
+    outputs.files file(npmCacheDir)
+    args = [ 'config', 'set', 'cache', npmCacheDir ]
+}
+
+task npmPackages(type: NpmTask, dependsOn: npmCacheConfig) {
+    description = "Install Node.js packages"
+    args = [ 'install' ]
+    inputs.files file('package.json')
+    outputs.files file('node_modules')
+}
+
+task bowerInstall(type: NodeTask) {
+    script = file('node_modules/bower/bin/bower')
+    args = ["--config.storage.cache=${gradle.getGradleUserHomeDir()}/caches/bower/cache",
+            "--config.storage.packages=${gradle.getGradleUserHomeDir()}/caches/bower/packages",
+            "--config.storage.registry=${gradle.getGradleUserHomeDir()}/caches/bower/registry",
+            'install']
+    inputs.files file('bower.json')
+    outputs.files file('bower_components')
+    dependsOn npmPackages
+}
+
+task bowerSyncJavascript(type: Sync) {
+    from 'bower_components'
+    into "grails-app/assets/javascripts/bower_components"
+    exclude '**/*.min.js'
+    exclude '**/angular*/index.js'
+    exclude '**/angular*/ng*.js'
+    include 'jquery/dist/jquery.js'
+    include 'angular*/**/*.js'
+    dependsOn bowerInstall
+}
+
+task bowerSyncStylesheets(type: Sync) {
+    from 'bower_components'
+    into "grails-app/assets/stylesheets/bower_components"
+    include 'angular*/**/*.css'
+    include 'animate.css/animate.css'
+    dependsOn bowerInstall
+}
+
+task bowerPackages() {
+    dependsOn bowerSyncJavascript, bowerSyncStylesheets
+}
+
+processResources.dependsOn bowerPackages
+assetCompile.dependsOn bowerPackages
+
+clean.delete << file('grails-app/assets/javascripts/bower_components')
+clean.delete << file('grails-app/assets/stylesheets/bower_components')
+clean.delete << file('node_modules')
+clean.delete << file('bower_components')
