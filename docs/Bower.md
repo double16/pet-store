@@ -37,39 +37,42 @@ specified version. Now we'll add this plugin to our build.
 
 Add the dependency:
 
-TODO: gist of dependency
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=gradle-node-plugin-dep.gradle"]
 
 Configure Node versions:
 
-TODO: gist of config block
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=node-config.gradle"]
 
 Since caching of dependencies is important for a faster build, we'll instruct the Gradle managed NPM to cache packages
 into our Gradle cache. In order for this to work, the tasks we'll create later need to depend on this task.
 
-TODO: gist of npmCacheConfig task
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=npmCacheConfig.gradle"]
 
 ## Installing Bower
 We'll use the `package.json` file to specify dependencies for NPM and then invoke it to install those dependencies. This file
-belongs in the root of the project. You can read about the contents of the file at TODO.
+belongs in the root of the project. You can read about the contents of the file at [docs.npmjs.com](https://docs.npmjs.com/files/package.json).
 
-TODO: gist of package.json
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=package.json"]
 
-Now we need a task to install NPM dependencies:
+Now we need a task to install NPM dependencies. There is an `npmInstall` task provided with the gradle-node-plugin, but
+it doesn't install into our local `node_modules` folder and we want that to avoid version conflicts and also to be able
+to find the `bower` command without depending on the search path. It looks like the location of the `node_modules` folder
+can be specified in the latest plugin, but that code was not released as of this writing.
 
-TODO: gist of npmPackages task
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=npmInstall-dep.gradle"]
 
 Run `./gradlew npmPackages` and Gradle will install Node, NPM and Bower. All will be cached in the Gradle user home. This
-should work across operating systems and no depend on anything but a properly installed JDK 1.7+.
+should work across operating systems and not depend on anything but a properly installed JDK 1.7+.
 
 # Specifying Bower Packages
 Bower uses a file named `bower.json` to specify package dependencies. In this project we're bringing in [AngularJS](https://angularjs.org)
 and [Animate.css](http://daneden.github.io/animate.css/).
 
-TODO: gist of bower.json
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=bower.json"]
 
 The following task will invoke Bower to download, cache and install the packages at `bower_components`:
 
-TODO: gist of bowerInstall task
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=bowerInstall.gradle"]
 
 # Copying Production Files
 The most difficult part of this process is how to get the files Bower has fetched for us into our application. Bower
@@ -83,15 +86,15 @@ individually. The important part is that you need to identify which files will b
 
 Here is the task for the JavaScript files:
 
-TODO: gist of JavaScript task
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=bowerSyncJavascript.gradle"]
 
 Here is the task for the Stylesheets:
 
-TODO: gist of stylesheet task
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=bowerSyncStylesheets.gradle"]
 
 For convenience we'll have one task that depends on both:
 
-TODO: gist of bowerPackages
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=bowerPackages.gradle"]
 
 Now we'll have the `processResources` and `assetCompile` tasks depend on the `bowerPackages` task so our files will be
 copied before running the application or compiling. `processResources` is specific to the `java` Gradle plugin, and
@@ -99,19 +102,23 @@ copied before running the application or compiling. `processResources` is specif
 adjust these dependencies to ensure the files are available when needed. It's a good idea to use the `--dry-run` flag to
 verify the tasks are called at the correct time and try your builds on a clean workspace.
 
-TODO: gist of processResources and assetCompile depending on bowerPackages
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=bowerPackages-dep.gradle"]
 
-The final Gradle change is to augment the `clean` task to remove the `bower_components` folders.
+The final Gradle change is to augment the `clean` task to remove the `node_modules` and `bower_components` folders.
 
-TODO: gist of augmenting the clean task
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=clean.gradle"]
+
+You'll want to add the following to your `.gitignore` file:
+
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=gitignore"]
 
 # Include the File in the Grails Application
 One more thing to do and that's include the bower-managed dependencies in our application. This is a Grails 3 application,
 when you're using another stack including the files will be different.
 
-TODO: gist of application.js
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=application.js"]
 
-TODO: gist of application.css
+[addjs src="https://gist.github.com/double16/c27be33bacf83fa5d626.js?file=application.css"]
 
 There's more work left to actually _use_ these in our application. The pet-store application is intended to demonstrate
 that the dependencies are brought in correctly and not necessarily an example of best practice use of AngularJS and Animate.css
@@ -128,4 +135,5 @@ We should now be able to run our application and use the JS/CSS Bower has instal
 Dependency management is an important problem to solve and we want to avoid manually downloading and copying JS/CSS and
 the like into our repository. Bower is a popular solution and many projects publish to it. There's a bit of work to set up
 Gradle to invoke Bower (made *much* easier by the gradle-node-plugin), but once done maintenance will be significantly
-easier. Now we have proper dependency management in a Gradle build with one step to an executable.
+easier. Now we have proper dependency management in a Gradle build with one step to an executable. Also, it appears that
+most of this work could be added to the gradle-node-plugin and a new task created for installing Bower dependencies.
