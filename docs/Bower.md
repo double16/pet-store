@@ -13,7 +13,7 @@ plugin. It's very likely Bower will be updated by the source project, so the app
 management.
 
 One problem with Bower is that the packages usually have more files than one would want on a production server. We'll
-use the Gradle Sync task to handle that. It's a bit more work, but worth it.
+use the Gradle [Sync](http://gradle.org/docs/current/javadoc/org/gradle/api/tasks/Sync.html) task to handle that. It's a bit more work, but worth it.
 
 Another issue with using Bower is that it's a [NodeJS](https://nodejs.org) application. That means we need Node and NPM installed. We'll solve
 that using the [gradle-node-plugin](https://github.com/srs/gradle-node-plugin).
