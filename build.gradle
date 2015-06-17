@@ -74,6 +74,8 @@ dependencies {
     compile "org.grails.plugins:hibernate"
     compile "org.grails.plugins:cache"
     compile "org.hibernate:hibernate-ehcache"
+    compile "org.grails.plugins:mongodb"
+    compile "de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.46.4"
 
     runtime "org.grails.plugins:asset-pipeline"
     runtime "org.grails.plugins:scaffolding"
