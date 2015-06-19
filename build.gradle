@@ -38,6 +38,8 @@ apply plugin: "com.moowork.node"
 ext {
     grailsVersion = project.grailsVersion
     gradleWrapperVersion = project.gradleWrapperVersion
+    cacheDir = gradle.getGradleUserHomeDir() as String ?: "${System.getProperty("user.home")}/.cache/gradle"
+    new File(cacheDir).mkdirs()
 }
 
 assets {
@@ -157,7 +159,7 @@ task deployToHeroku(dependsOn: herokuSources) {
 
 task npmCacheConfig(type: NpmTask) {
     description = "Configure the NPM cache"
-    def npmCacheDir = "${gradle.getGradleUserHomeDir()}/caches/npm"
+    def npmCacheDir = "${cacheDir}/caches/npm"
     outputs.files file(npmCacheDir)
     args = [ 'config', 'set', 'cache', npmCacheDir ]
 }
@@ -171,9 +173,9 @@ task npmPackages(type: NpmTask, dependsOn: npmCacheConfig) {
 
 task bowerInstall(type: NodeTask) {
     script = file('node_modules/bower/bin/bower')
-    args = ["--config.storage.cache=${gradle.getGradleUserHomeDir()}/caches/bower/cache",
-            "--config.storage.packages=${gradle.getGradleUserHomeDir()}/caches/bower/packages",
-            "--config.storage.registry=${gradle.getGradleUserHomeDir()}/caches/bower/registry",
+    args = ["--config.storage.cache=${cacheDir}/caches/bower/cache",
+            "--config.storage.packages=${cacheDir}/caches/bower/packages",
+            "--config.storage.registry=${cacheDir}/caches/bower/registry",
             'install']
     inputs.files file('bower.json')
     outputs.files file('bower_components')
