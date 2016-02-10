@@ -125,6 +125,9 @@ task herokuSources(type: Tar, dependsOn: [emptyPom, bootRepackage]) {
     from 'Procfile'
     from 'system.properties'
     from 'build/pom.xml'
+    rename { String fileName ->
+        fileName.replace("-${project.version}", '')
+    }
 }
 
 // Documentation at https://devcenter.heroku.com/articles/build-and-release-using-the-api
