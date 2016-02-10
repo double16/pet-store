@@ -15,7 +15,7 @@ buildscript {
         classpath "org.grails:grails-gradle-plugin:$grailsVersion"
         classpath 'com.bertramlabs.plugins:asset-pipeline-gradle:2.1.1'
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
-        classpath 'com.moowork.gradle:gradle-node-plugin:0.9'
+        classpath 'com.moowork.gradle:gradle-node-plugin:0.10'
     }
 }
 
@@ -48,8 +48,8 @@ assets {
 }
 
 node {
-    version = '0.12.2'
-    npmVersion = '2.7.5'
+    version = '5.5.0'
+    npmVersion = '3.7.2'
     download = true
 }
 
@@ -172,7 +172,7 @@ task npmPackages(type: NpmTask, dependsOn: npmCacheConfig) {
 }
 
 task bowerInstall(type: NodeTask) {
-    script = file('node_modules/bower/bin/bower')
+    script = file('node_modules/.bin/bower')
     args = ["--config.storage.cache=${cacheDir}/caches/bower/cache",
             "--config.storage.packages=${cacheDir}/caches/bower/packages",
             "--config.storage.registry=${cacheDir}/caches/bower/registry",
