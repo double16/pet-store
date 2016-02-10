@@ -117,7 +117,7 @@ task emptyPom {
 }
 
 task herokuSources(type: Tar, dependsOn: [emptyPom, bootRepackage]) {
-    description = "Package built application into Heroku sources for faster deployment"
+    description = "Package binary application into Heroku sources for faster deployment"
     group = "distribution"
     appendix = "heroku"
     compression = Compression.GZIP
