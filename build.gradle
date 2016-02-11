@@ -48,8 +48,8 @@ assets {
 }
 
 node {
-    version = '5.5.0'
-    npmVersion = '3.7.2'
+    version = '4.3.0'
+    npmVersion = '2.14.12'
     download = true
 }
 
@@ -110,26 +110,6 @@ task emptyPom {
   <name>Pet Store</name>
   <build>
     <finalName>placeholder</finalName>
-    <plugins><plugin>
-    <artifactId>maven-resources-plugin</artifactId>
-    <version>2.6</version>
-    <executions>
-         <execution>
-            <id>copy-resources</id>
-            <phase>compile</phase>
-            <goals><goal>copy-resources</goal></goals>
-            <configuration>
-               <outputDirectory>\${basedir}/target</outputDirectory>
-               <resources>
-                    <resource>
-                      <directory>\${basedir}/src/main/jar</directory>
-                      <includes><include>pet-store-*.war</include></includes>
-                    </resource>
-               </resources>
-            </configuration>
-        </execution>
-     </executions>
-    </plugin></plugins>
   </build>
 </project>
 """
@@ -144,7 +124,7 @@ task herokuSources(type: Tar, dependsOn: [emptyPom, bootRepackage]) {
     from 'Procfile'
     from 'system.properties'
     from 'build/pom.xml'
-    into('src/main/jar') {
+    into('src/main/dist') {
        from war.archivePath
     }
 }
