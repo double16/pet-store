@@ -99,7 +99,7 @@ task wrapper(type: Wrapper) {
 task emptyPom {
     outputs.file('build/pom.xml')
     doLast {
-        new File('build/pom.xml') << """
+        new File('build/pom.xml').text = """
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
@@ -121,12 +121,11 @@ task herokuSources(type: Tar, dependsOn: [emptyPom, bootRepackage]) {
     group = "distribution"
     appendix = "heroku"
     compression = Compression.GZIP
-    from jar.archivePath
     from 'Procfile'
     from 'system.properties'
     from 'build/pom.xml'
-    rename { String fileName ->
-        fileName.replace("-${project.version}", '')
+    into('target') {
+        from jar.archivePath
     }
 }
 
