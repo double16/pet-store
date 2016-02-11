@@ -123,7 +123,7 @@ task emptyPom {
                <resources>
                     <resource>
                       <directory>\${basedir}/src/main/jar</directory>
-                      <includes><include>pet-store-*.jar</include></includes>
+                      <includes><include>pet-store-*.war</include></includes>
                     </resource>
                </resources>
             </configuration>
@@ -145,7 +145,7 @@ task herokuSources(type: Tar, dependsOn: [emptyPom, bootRepackage]) {
     from 'system.properties'
     from 'build/pom.xml'
     into('src/main/jar') {
-       from jar.archivePath
+       from war.archivePath
     }
 }
 
