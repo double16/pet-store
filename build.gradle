@@ -214,3 +214,6 @@ clean.delete << file('grails-app/assets/javascripts/bower_components')
 clean.delete << file('grails-app/assets/stylesheets/bower_components')
 clean.delete << file('node_modules')
 clean.delete << file('bower_components')
+
+build.dependsOn ':staticsite:generate'
+
