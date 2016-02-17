@@ -1,0 +1,14 @@
+setenv.sh
+build
+target
+out
+*.iml
+*.ipr
+*.iws
+*.log
+.idea
+.gradle
+*.db
+node_modules
+bower_components
+.asscache
