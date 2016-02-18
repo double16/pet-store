@@ -9,9 +9,9 @@ RUN mkdir /cache && chown r /cache
 ENV GRADLE_USER_HOME=/cache
 
 WORKDIR /home/r
-COPY . app
-RUN chown -R r app
-WORKDIR app
+COPY . /app
+RUN chown -R r /app
+WORKDIR /app
 
 USER r
 RUN ./gradlew --version
