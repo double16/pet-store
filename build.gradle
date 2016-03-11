@@ -57,6 +57,7 @@ node {
     download = true
 }
 
+/** Use the typical docker-machine environment variables to configure docker. */
 ext {
     dockerHost = null
 }
@@ -235,6 +236,12 @@ clean.delete << file('bower_components')
 
 build.dependsOn ':staticsite:generate'
 
+/**
+ * Container based tasks follow. These tasks allow all build operations to be done in containers,
+ * thus reducing the dependencies required on the build host to be Java and Docker.
+ */
+
+/** Download all dependencies, this will be run in a container to cache the dependencies. */
 task primeCache << {
   project.rootProject.allprojects.each { subProject ->
     subProject.buildscript.configurations.each { configuration ->
@@ -246,16 +253,26 @@ task primeCache << {
   }
 }
 
+/** The `dockerOutput` directory holds all build outputs from the containers. */
+ext {
+  dockerOutput = "${project.buildDir}/docker/output"
+}
+
+/** Construct the context for a base image which is the source code without build artifacts. */
 task dockerBaseContext(type: Sync) {
   into "${project.buildDir}/docker/base"
   from project.projectDir
-  exclude project.buildDir.name
-  exclude 'node_modules'
-  exclude 'bower_components'
-  exclude 'out'
-  exclude 'Dockerfile'
+  // Re-use the information in .gitignore to exclude non-source artifacts (build, IDE, etc.)
+  if (file('.gitignore').exists()) {
+    file('.gitignore').eachLine { exclude it.replaceFirst("^/", "") }
+  }
 }
 
+/** 
+ * Dockerfile for a base image that contains Gradle, Node and other dependencies stored in the cache.  This
+ * image will be re-built occasionally to reflect new dependencies. There is a bit of complexity here with using
+ * a user account named 'r'. Bower refuses to run as root, so we need to do this.
+ */
 task dockerBaseDockerfile(type: Dockerfile) {
   dependsOn dockerBaseContext
   destFile = file("${project.buildDir}/docker/base/Dockerfile")
@@ -291,12 +308,23 @@ task dockerBaseDockerfile(type: Dockerfile) {
   //'  USER r'
 }
 
+/**
+ * Build a base image that can be built upon with the source code. The tag should always be
+ * 'latest' since we'll use this for multiple versions of the app code. It's not terribly important to
+ * keep this synced up with the current code base, new or changed dependencies will be downloaded.
+ * A periodic rebuild of the base image is recommended with possibly a manual build when things change
+ * dramatically.
+ */
 task dockerBaseImage(type: DockerBuildImage) {
   dependsOn dockerBaseDockerfile
   inputDir = dockerBaseDockerfile.destFile.parentFile
   tag = "double16/pet-store_base"
 }
 
+/**
+ * Dockerfile for an app container with the current source code, ready to be built. The entry point will
+ * be Gradle so only the tasks need to be sent.
+ */
 task dockerAppDockerfile(type: Dockerfile) {
   dependsOn dockerBaseContext
   destFile = file("${project.buildDir}/docker/base/Dockerfile.app")
@@ -307,10 +335,13 @@ task dockerAppDockerfile(type: Dockerfile) {
   copyFile '.', '/app'
   runCommand 'chown -R r /app'
   user 'r'
-  entryPoint './gradlew'
+  entryPoint './gradlew','--info','--stacktrace'
   defaultCommand 'check'
 }
 
+/**
+ * Build the app container and tag with the git short commit hash.
+ */
 task dockerAppImage(type: DockerBuildImage) {
   dependsOn dockerAppDockerfile
   dockerFile = dockerAppDockerfile.destFile
@@ -318,9 +349,14 @@ task dockerAppImage(type: DockerBuildImage) {
   tag = "double16/pet-store_app:${'git rev-parse HEAD'.execute().text.trim().take(12) ?: 'latest'}"
 }
 
+/**
+ * The following set of tasks create a container that executes the `check` task and extracts
+ * the test artifacts into the host filesystem.
+ */
 task dockerCreateCheck(type: DockerCreateContainer) {
   dependsOn dockerAppImage
   targetImageId { dockerAppImage.getImageId() }
+  cmd = ['check']
   attachStdout = true
   attachStderr = true
 }
@@ -328,11 +364,37 @@ task dockerStartCheck(type: DockerStartContainer) {
   dependsOn dockerCreateCheck
   targetContainerId { dockerCreateCheck.getContainerId() }
 }
+/**
+ * We need to wait for the `check` task to complete, docker is running this in the background.
+ */
 task dockerWaitCheck(type: DockerWaitContainer) {
+  dependsOn dockerCreateCheck
   targetContainerId { dockerCreateCheck.getContainerId() }
 }
+task dockerCheckResults(type: DockerCopyFileFromContainer) {
+  dependsOn dockerWaitCheck
+  targetContainerId { dockerCreateCheck.getContainerId() }
+  remotePath '/app/build/test-results'
+  hostPath "${dockerOutput}/test-results"
+  doFirst { file(dockerOutput).mkdirs() }
+  outputs.dir file("${dockerOutput}/test-results")
+}
+task dockerCheckReports(type: DockerCopyFileFromContainer) {
+  dependsOn dockerWaitCheck
+  targetContainerId { dockerCreateCheck.getContainerId() }
+  remotePath '/app/build/reports'
+  hostPath "${dockerOutput}/reports"
+  doFirst { file(dockerOutput).mkdirs() }
+  outputs.dir file("${dockerOutput}/reports")
+}
+/**
+ * NOTE: this is the task to run
+ */
 task dockerCheck {
   dependsOn dockerStartCheck
-  finalizedBy dockerWaitCheck
+  finalizedBy dockerCheckResults, dockerCheckReports
 }
+/**
+ * End of 'check' container tasks.
+ */
 
