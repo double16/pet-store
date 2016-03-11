@@ -2,6 +2,8 @@ import groovyx.net.http.RESTClient
 import org.apache.http.impl.client.DefaultHttpClient
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.FileEntity
+import com.bmuschko.gradle.docker.tasks.image.*
+import com.bmuschko.gradle.docker.tasks.container.*
 
 buildscript {
     ext {
@@ -16,6 +18,7 @@ buildscript {
         classpath 'com.bertramlabs.plugins:asset-pipeline-gradle:2.1.1'
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
         classpath 'com.moowork.gradle:gradle-node-plugin:0.10'
+        classpath 'com.bmuschko:gradle-docker-plugin:2.6.7'
     }
 }
 
@@ -34,6 +37,7 @@ apply plugin: 'idea'
 apply plugin: "org.grails.grails-web"
 apply plugin: "org.grails.grails-gsp"
 apply plugin: "com.moowork.node"
+apply plugin: "com.bmuschko.docker-remote-api"
 
 ext {
     grailsVersion = project.grailsVersion
@@ -48,9 +52,23 @@ assets {
 }
 
 node {
-    version = '4.3.0'
+    version = '4.3.1'
     npmVersion = '2.14.12'
     download = true
+}
+
+ext {
+    dockerHost = null
+}
+docker {
+    if (System.getenv('DOCKER_TLS_VERIFY') == '1' && System.getenv('DOCKER_CERT_PATH')) {
+        url = System.getenv('DOCKER_HOST')?.replaceAll('tcp://', 'https://')
+        certPath = new File(System.getenv('DOCKER_CERT_PATH'))
+        project.dockerHost = new URL(url).host
+    } else if (System.getenv('DOCKER_HOST')) {
+        url = System.getenv('DOCKER_HOST')?.replaceAll('tcp://', 'http://')
+        project.dockerHost = new URL(url).host
+    }
 }
 
 repositories {
@@ -216,4 +234,105 @@ clean.delete << file('node_modules')
 clean.delete << file('bower_components')
 
 build.dependsOn ':staticsite:generate'
+
+task primeCache << {
+  project.rootProject.allprojects.each { subProject ->
+    subProject.buildscript.configurations.each { configuration ->
+      configuration.resolve()
+    }
+    subProject.configurations.each { configuration ->
+      configuration.resolve()
+    }
+  }
+}
+
+task dockerBaseContext(type: Sync) {
+  into "${project.buildDir}/docker/base"
+  from project.projectDir
+  exclude project.buildDir.name
+  exclude 'node_modules'
+  exclude 'bower_components'
+  exclude 'out'
+  exclude 'Dockerfile'
+}
+
+task dockerBaseDockerfile(type: Dockerfile) {
+  dependsOn dockerBaseContext
+  destFile = file("${project.buildDir}/docker/base/Dockerfile")
+  from 'java:8'
+  maintainer 'Patrick Double "pat@patdouble.com"' 
+  environmentVariable 'TERM', 'dumb'
+  environmentVariable 'GRADLE_USER_HOME', '/cache'
+  runCommand "adduser --disabled-password --gecos '' r  && adduser r sudo && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
+  runCommand "mkdir /cache && chown r /cache && mkdir /app && chown r /app && mkdir /prime && chown r /prime"
+  workingDir '/prime'
+
+  copyFile 'gradle', '/prime'
+  copyFile 'gradlew', '/prime'
+  user 'r'
+  runCommand './gradlew --version' // cache gradle distro before dependencies
+
+  user 'root'
+  copyFile '.', '/prime'
+  runCommand 'chown -R r /prime'
+  user 'r'
+  runCommand './gradlew nodeSetup'
+  runCommand './gradlew npmPackages'
+  runCommand './gradlew bowerInstall'
+  runCommand './gradlew primeCache'
+  user 'root'
+  runCommand 'rm -rf /prime'
+  user 'r'
+  workingDir '/app'
+  //'/cache (GRADLE_USER_HOME) is populated with dependencies'
+  //'Issue the following commands before running the container:'
+  //'  COPY . /app'
+  //'  RUN chown -R r /app'
+  //'  USER r'
+}
+
+task dockerBaseImage(type: DockerBuildImage) {
+  dependsOn dockerBaseDockerfile
+  inputDir = dockerBaseDockerfile.destFile.parentFile
+  tag = "double16/pet-store_base"
+}
+
+task dockerAppDockerfile(type: Dockerfile) {
+  dependsOn dockerBaseContext
+  destFile = file("${project.buildDir}/docker/base/Dockerfile.app")
+  from dockerBaseImage.tag
+  maintainer 'Patrick Double "pat@patdouble.com"' 
+  user 'root'
+  workingDir '/app'
+  copyFile '.', '/app'
+  runCommand 'chown -R r /app'
+  user 'r'
+  entryPoint './gradlew'
+  defaultCommand 'check'
+}
+
+task dockerAppImage(type: DockerBuildImage) {
+  dependsOn dockerAppDockerfile
+  dockerFile = dockerAppDockerfile.destFile
+  inputDir = dockerAppDockerfile.destFile.parentFile
+  tag = "double16/pet-store_app:${'git rev-parse HEAD'.execute().text.trim().take(12) ?: 'latest'}"
+}
+
+task dockerCreateCheck(type: DockerCreateContainer) {
+  dependsOn dockerAppImage
+  targetImageId { dockerAppImage.getImageId() }
+  attachStdout = true
+  attachStderr = true
+}
+task dockerStartCheck(type: DockerStartContainer) {
+  dependsOn dockerCreateCheck
+  targetContainerId { dockerCreateCheck.getContainerId() }
+}
+task dockerWaitCheck(type: DockerWaitContainer) {
+  targetContainerId { dockerCreateCheck.getContainerId() }
+}
+task dockerCheck {
+  dependsOn dockerStartCheck
+  finalizedBy dockerWaitCheck
+}
 
