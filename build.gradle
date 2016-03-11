@@ -380,7 +380,10 @@ task dockerCheckResults(type: DockerCopyFileFromContainer) {
   targetContainerId { dockerCreateCheck.getContainerId() }
   remotePath '/app/build/test-results'
   hostPath "${dockerOutput}/test-results"
-  doFirst { file(dockerOutput).mkdirs() }
+  doFirst {
+    file(dockerOutput).mkdirs()
+    file(hostPath).deleteDir()
+  }
   outputs.dir file("${dockerOutput}/test-results")
 }
 task dockerCheckReports(type: DockerCopyFileFromContainer) {
@@ -388,7 +391,10 @@ task dockerCheckReports(type: DockerCopyFileFromContainer) {
   targetContainerId { dockerCreateCheck.getContainerId() }
   remotePath '/app/build/reports'
   hostPath "${dockerOutput}/reports"
-  doFirst { file(dockerOutput).mkdirs() }
+  doFirst {
+    file(dockerOutput).mkdirs()
+    file(hostPath).deleteDir()
+  }
   outputs.dir file("${dockerOutput}/reports")
 }
 /**
