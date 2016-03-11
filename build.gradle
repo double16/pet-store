@@ -44,6 +44,8 @@ ext {
     gradleWrapperVersion = project.gradleWrapperVersion
     cacheDir = gradle.getGradleUserHomeDir() as String ?: "${System.getProperty("user.home")}/.cache/gradle"
     new File(cacheDir).mkdirs()
+
+    commit = System.getenv("COMMIT_HASH") ?: "git rev-parse HEAD".execute().text.trim()
 }
 
 assets {
@@ -262,6 +264,7 @@ ext {
 task dockerBaseContext(type: Sync) {
   into "${project.buildDir}/docker/base"
   from project.projectDir
+  exclude '.git'
   // Re-use the information in .gitignore to exclude non-source artifacts (build, IDE, etc.)
   if (file('.gitignore').exists()) {
     file('.gitignore').eachLine { exclude it.replaceFirst("^/", "") }
@@ -284,7 +287,7 @@ task dockerBaseDockerfile(type: Dockerfile) {
   runCommand "mkdir /cache && chown r /cache && mkdir /app && chown r /app && mkdir /prime && chown r /prime"
   workingDir '/prime'
 
-  copyFile 'gradle', '/prime'
+  copyFile 'gradle', '/prime/gradle'
   copyFile 'gradlew', '/prime'
   user 'r'
   runCommand './gradlew --version' // cache gradle distro before dependencies
@@ -293,10 +296,10 @@ task dockerBaseDockerfile(type: Dockerfile) {
   copyFile '.', '/prime'
   runCommand 'chown -R r /prime'
   user 'r'
-  runCommand './gradlew nodeSetup'
-  runCommand './gradlew npmPackages'
-  runCommand './gradlew bowerInstall'
-  runCommand './gradlew primeCache'
+  runCommand './gradlew -is nodeSetup'
+  runCommand './gradlew -is npmPackages'
+  runCommand './gradlew -is bowerInstall'
+  runCommand './gradlew -is primeCache'
   user 'root'
   runCommand 'rm -rf /prime'
   user 'r'
@@ -329,7 +332,8 @@ task dockerAppDockerfile(type: Dockerfile) {
   dependsOn dockerBaseContext
   destFile = file("${project.buildDir}/docker/base/Dockerfile.app")
   from dockerBaseImage.tag
-  maintainer 'Patrick Double "pat@patdouble.com"' 
+  maintainer 'Patrick Double "pat@patdouble.com"'
+  environmentVariable 'COMMIT_HASH', commit
   user 'root'
   workingDir '/app'
   copyFile '.', '/app'
