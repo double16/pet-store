@@ -258,16 +258,63 @@ task primeCache << {
 /** The `dockerOutput` directory holds all build outputs from the containers. */
 ext {
   dockerOutput = "${project.buildDir}/docker/output"
+  hostMap = [:]
+}
+
+/** We want to maintain any proxy configurations and there might be hosts in /etc/hosts, so let's resolve those */
+new File("/etc/hosts").eachLine { String line ->
+    def split = line.split('\\s+')
+    def ip = split[0]
+    if ([~/#.*/, ~/127\..*/, ~/::.*/, ~/255\..*/].find { ip ==~ it } == null) {
+        split.drop(1).each { host ->
+            hostMap[host] = ip
+        }
+    }
+}
+String hostResolve(String str) {
+    hostMap.each { host, ip ->
+        str = str.replaceAll("//${host}([:/])", "//${ip}\$1")
+    }
+    str
 }
 
 /** Construct the context for a base image which is the source code without build artifacts. */
 task dockerBaseContext(type: Sync) {
+  group = "staging"
   into "${project.buildDir}/docker/base"
   from project.projectDir
+
+  def initGradle = new File("${cacheDir}/init.gradle")
+  if (initGradle.exists() && initGradle.file) {
+      from(initGradle) {
+          filter { hostResolve(it) }
+      }
+  }
+
+  def npmrc = new File("${System.getProperty("user.home")}/.npmrc")
+  if (npmrc.exists() && npmrc.file) {
+      from(npmrc) {
+          filter { (it ==~ /\s*registry\s*=.*/ || it ==~ /\s*phantomjs.*=.*/) ? hostResolve(it) : null }
+      }
+  }
+
   exclude '.git'
   // Re-use the information in .gitignore to exclude non-source artifacts (build, IDE, etc.)
   if (file('.gitignore').exists()) {
     file('.gitignore').eachLine { exclude it.replaceFirst("^/", "") }
+  }
+
+  doLast {
+      if (hostMap['nexus']) {
+          def wrapperProps = file("${project.buildDir}/docker/base/gradle/wrapper/gradle-wrapper.properties")
+          if (wrapperProps.file) {
+              def text = wrapperProps.text
+              text = text.replaceAll(
+                      ~/https\\:\\/\\/services.gradle.org\\/distributions\\/gradle-([0-9.]+)-([A-Za-z]+).zip/,
+                      "http\\\\://${hostMap['nexus']}:9081/content/groups/public/org/gradle/wrapper/\$1/gradle-\$1-\$2.zip")
+              wrapperProps.text = text
+          }
+      }
   }
 }
 
@@ -285,17 +332,24 @@ task dockerBaseDockerfile(type: Dockerfile) {
   environmentVariable 'GRADLE_USER_HOME', '/cache'
   runCommand "adduser --disabled-password --gecos '' r  && adduser r sudo && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
   runCommand "mkdir /cache && chown r /cache && mkdir /app && chown r /app && mkdir /prime && chown r /prime"
+  runCommand 'echo org.gradle.daemon=true >> /cache/gradle.properties'
   workingDir '/prime'
 
-  copyFile 'gradle', '/prime/gradle'
-  copyFile 'gradlew', '/prime'
+  copyFile 'gradle', '/prime/gradle/'
+  copyFile 'gradlew', '/prime/'
   user 'r'
   runCommand './gradlew --version' // cache gradle distro before dependencies
 
   user 'root'
-  copyFile '.', '/prime'
+  copyFile '.', '/prime/'
   runCommand 'chown -R r /prime'
   user 'r'
+  if (new File(destFile.parentFile, "init.gradle").file) {
+      copyFile 'init.gradle', '/cache/'
+  }
+  if (new File(destFile.parentFile, ".npmrc").file) {
+      copyFile '.npmrc', '${HOME}/'
+  }
   runCommand './gradlew -is nodeSetup'
   runCommand './gradlew -is npmPackages'
   runCommand './gradlew -is bowerInstall'
@@ -319,6 +373,7 @@ task dockerBaseDockerfile(type: Dockerfile) {
  * dramatically.
  */
 task dockerBaseImage(type: DockerBuildImage) {
+  group = 'staging'
   dependsOn dockerBaseDockerfile
   inputDir = dockerBaseDockerfile.destFile.parentFile
   tag = "double16/pet-store_base"
@@ -329,6 +384,7 @@ task dockerBaseImage(type: DockerBuildImage) {
  * be Gradle so only the tasks need to be sent.
  */
 task dockerAppDockerfile(type: Dockerfile) {
+  group = 'staging'
   dependsOn dockerBaseContext
   destFile = file("${project.buildDir}/docker/base/Dockerfile.app")
   from dockerBaseImage.tag
@@ -336,7 +392,7 @@ task dockerAppDockerfile(type: Dockerfile) {
   environmentVariable 'COMMIT_HASH', commit
   user 'root'
   workingDir '/app'
-  copyFile '.', '/app'
+  copyFile '.', '/app/'
   runCommand 'chown -R r /app'
   user 'r'
   entryPoint './gradlew','--info','--stacktrace'
@@ -347,6 +403,7 @@ task dockerAppDockerfile(type: Dockerfile) {
  * Build the app container and tag with the git short commit hash.
  */
 task dockerAppImage(type: DockerBuildImage) {
+  group = 'staging'
   dependsOn dockerAppDockerfile
   dockerFile = dockerAppDockerfile.destFile
   inputDir = dockerAppDockerfile.destFile.parentFile
@@ -407,4 +464,10 @@ task dockerCheck {
 /**
  * End of 'check' container tasks.
  */
+
+task dockerClean(type: Exec) {
+    group = "staging"
+    description = "Stop and remove all docker containers"
+    commandLine '/bin/sh','-c','docker ps -qa | xargs docker rm -f'
+}
 
