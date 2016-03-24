@@ -471,3 +471,47 @@ task dockerClean(type: Exec) {
     commandLine '/bin/sh','-c','docker ps -qa | xargs docker rm -f'
 }
 
+/**
+ * Static site container.
+ */
+task dockerStaticSiteContext(type: Sync) {
+  group = "staging"
+  dependsOn ':staticsite:generate'
+  into "${project.buildDir}/docker/staticsite/content"
+  from project(':staticsite').file('target')
+}
+
+task dockerStaticSiteDockerfile(type: Dockerfile) {
+  group = 'staging'
+  dependsOn dockerStaticSiteContext
+  destFile = file("${project.buildDir}/docker/staticsite/Dockerfile")
+  from 'sebp/lighttpd:latest'
+  maintainer 'Patrick Double "pat@patdouble.com"'
+  copyFile 'content', '/var/www/localhost/htdocs/'
+}
+
+task dockerStaticSiteImage(type: DockerBuildImage) {
+  group = 'staging'
+  dependsOn dockerStaticSiteDockerfile
+  dockerFile = dockerStaticSiteDockerfile.destFile
+  inputDir = dockerStaticSiteDockerfile.destFile.parentFile
+  tag = "double16/pet-store_site:${'git rev-parse HEAD'.execute().text.trim().take(12) ?: 'latest'}"
+}
+
+task dockerStaticSiteCreate(type: DockerCreateContainer) {
+  dependsOn dockerStaticSiteImage
+  targetImageId { dockerStaticSiteImage.getImageId() }
+  portBindings = ['80']
+}
+
+task dockerStaticSiteStart(type: DockerStartContainer) {
+  dependsOn dockerStaticSiteCreate
+  targetContainerId { dockerStaticSiteCreate.getContainerId() }
+}
+
+task dockerStaticSiteRemove(type: DockerRemoveContainer) {
+  dependsOn dockerStaticSiteCreate
+  targetContainerId { dockerStaticSiteCreate.getContainerId() }
+  force = true
+}
+
