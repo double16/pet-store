@@ -16,3 +16,5 @@ target
 /nbbuild/
 build.xml
 /nbproject/
+**/vendor
+

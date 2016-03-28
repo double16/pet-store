@@ -11,3 +11,5 @@ setenv.sh
 /node_modules
 bower_components
 .asscache
+.sass-cache
+

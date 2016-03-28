@@ -7,10 +7,10 @@ resource_mapper = new ResourceMapper(site).map
 tag_libs = [ThemeTagLib]
 
 excludes += ['/_[^/]*/.*'] // excludes directories that start from '_'
+binary_files += [/(?i).*\.woff2$/]
 
 features {
     highlight = 'none' // 'none', 'pygments'
-    compass = 'none'
     markdown = 'txtmark'   // 'txtmark', 'pegdown'
 }
 
