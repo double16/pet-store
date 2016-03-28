@@ -3,6 +3,10 @@ apply plugin: 'groovy'
 apply plugin: 'idea'
 apply plugin: 'eclipse'
 
+/**
+ * Content changed from grain-theme-business by Patrick Double <pat@patdouble.com>
+ */
+
 group = 'com.sysgears.grain'
 version = '0.4.2'
 defaultTasks 'preview'

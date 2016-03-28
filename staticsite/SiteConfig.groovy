@@ -2,6 +2,10 @@ import com.sysgears.theme.ResourceMapper
 import com.sysgears.theme.deploy.GHPagesDeployer
 import com.sysgears.theme.taglib.ThemeTagLib
 
+/**
+ * Content changed from grain-theme-business by Patrick Double <pat@patdouble.com>
+ */
+
 // Resource mapper and tag libs.
 resource_mapper = new ResourceMapper(site).map
 tag_libs = [ThemeTagLib]
