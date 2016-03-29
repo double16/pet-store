@@ -468,7 +468,7 @@ task dockerCheck {
 task dockerClean(type: Exec) {
     group = "staging"
     description = "Stop and remove all docker containers"
-    commandLine '/bin/sh','-c','docker ps -qa | xargs docker rm -f'
+    commandLine '/bin/sh','-c','docker ps -qa | xargs docker rm -f ; docker volume ls -q | xargs docker volume rm'
 }
 
 /**
