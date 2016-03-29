@@ -54,3 +54,12 @@ HEROKU_APP_NAME=arcane-savannah-7223
 
 Keep as much code in build.gradle as possible. This allows local testing and consistent behavior when using multiple CI
 tools.
+
+# Grain Static Site Generator
+
+The project contains a static site example using [Grain](http://sysgears.com/grain), a Groovy based static site generator.
+Good practice is to keep static resources on a CDN, separate from the application. This allows performance increases due to
+reduced load on the application and the CDN being able to distribute network requests.
+
+The example here eventually will show how to connect the Grails application and the static site.
+
