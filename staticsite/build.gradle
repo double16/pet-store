@@ -1,0 +1,161 @@
+apply plugin: 'maven'
+apply plugin: 'groovy'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+
+/**
+ * Content changed from grain-theme-business by Patrick Double <pat@patdouble.com>
+ */
+
+group = 'com.sysgears.grain'
+version = '0.4.2'
+defaultTasks 'preview'
+
+ext {
+    mainClassName = [project.group, 'Main'].join('.')
+    compatibilityVersion = JavaVersion.VERSION_1_7
+    bowerComponentsDir = 'bower_components'
+}
+
+sourceCompatibility = compatibilityVersion
+targetCompatibility = compatibilityVersion
+
+clean.delete << file('.cache')
+clean.delete << file('target')
+clean.delete << file('theme/fonts/vendor')
+clean.delete << file('theme/javascripts/vendor')
+clean.delete << file('theme/sass/vendor')
+
+buildscript {
+    project.ext {
+        grainProps = new Properties()
+        grainProps.load(new FileInputStream("$project.projectDir/application.properties"))
+        grainVersion = grainProps.getProperty('grain.version')
+
+        if (!project.grainVersion) {
+            throw new RuntimeException('Grain version is not set in properties file')
+        }
+    }
+}
+
+configurations.all {
+    exclude group: 'commons-logging'
+    exclude group: 'rhino'
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://oss.sonatype.org/content/groups/public/'
+    }
+}
+
+dependencies {
+    compile "com.sysgears.grain:grain:$project.grainVersion"
+
+    compile 'org.codehaus.groovy:groovy:2.1.2'
+}
+
+sourceSets {
+    main {
+        groovy {
+            srcDirs = ['theme/src']
+        }
+    }
+}
+
+project.ext {
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+task gendeps {
+    doLast {
+        def classpath = project.classpath.files
+        def depFile = new File(".site-${project.grainVersion}.dep")
+        depFile.withWriter { writer ->
+            classpath.findAll { it.name.endsWith('.jar') }.sort {
+                !it.name.endsWith("grain-${project.grainVersion}.jar")
+            }.each {
+                writer.append(it.toString()).append('\n')
+            }
+        }
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.8'
+}
+
+idea {
+    module {
+        excludeDirs = ['.cache', '.idea', '.gradle', '.nb-gradle', '.settings', 'bin', 'out', 'target', 'gradle'].collect { file(it) }
+    }
+}
+
+task generate(type: JavaExec) {
+    logging.captureStandardOutput LogLevel.INFO
+    classpath sourceSets.main.runtimeClasspath
+    main = mainClassName
+    args name
+}
+
+task preview(type: JavaExec) {
+    classpath sourceSets.main.runtimeClasspath
+    main = mainClassName
+    args name
+    jvmArgs "-Xmx1024M", "-XX:MaxPermSize=512M"
+}
+
+task copyBootstrap {
+    inputs.file 'bower.json'
+    inputs.dir 'bower_components/bootstrap'
+    inputs.dir 'bower_components/bootstrap-sass-official'
+
+    outputs.dir 'theme/fonts/vendor/bootstrap'
+    outputs.dir 'theme/javascripts/vendor/jquery'
+    outputs.dir 'theme/javascripts/vendor/bootstrap'
+    outputs.dir 'theme/sass/vendor/bootstrap'
+
+    doLast {
+        copy {
+            from "${bowerComponentsDir}/bootstrap-sass-official/assets/fonts"
+            into 'theme/fonts/vendor'
+        }
+        copy {
+            from "${bowerComponentsDir}/jquery/dist"
+            into 'theme/javascripts/vendor/jquery'
+        }
+        copy {
+            from "${bowerComponentsDir}/bootstrap/dist/js"
+            into 'theme/javascripts/vendor/bootstrap'
+        }
+        copy {
+            from "${bowerComponentsDir}/bootstrap-sass-official/assets/stylesheets"
+            into 'theme/sass/vendor/bootstrap'
+        }
+    }
+}
+
+task copyFontawesome {
+    inputs.file 'bower.json'
+    inputs.dir 'bower_components/fontawesome'
+
+    outputs.dir 'theme/fonts/vendor/fontawesome'
+    outputs.dir 'theme/sass/vendor/fontawesome'
+
+    doLast {
+        copy {
+            from "${bowerComponentsDir}/fontawesome/fonts"
+            into 'theme/fonts/vendor/fontawesome'
+        }
+        copy {
+            from "${bowerComponentsDir}/fontawesome/scss"
+            into 'theme/sass/vendor/fontawesome'
+            rename 'font-awesome.scss', '_fontawesome.scss'
+        }
+    }
+}
+
+generate.dependsOn copyBootstrap, copyFontawesome
+preview.dependsOn copyBootstrap, copyFontawesome
+

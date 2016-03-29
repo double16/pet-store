@@ -2,6 +2,8 @@ import groovyx.net.http.RESTClient
 import org.apache.http.impl.client.DefaultHttpClient
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.FileEntity
+import com.bmuschko.gradle.docker.tasks.image.*
+import com.bmuschko.gradle.docker.tasks.container.*
 
 buildscript {
     ext {
@@ -16,6 +18,7 @@ buildscript {
         classpath 'com.bertramlabs.plugins:asset-pipeline-gradle:2.1.1'
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
         classpath 'com.moowork.gradle:gradle-node-plugin:0.10'
+        classpath 'com.bmuschko:gradle-docker-plugin:2.6.7'
     }
 }
 
@@ -34,12 +37,15 @@ apply plugin: 'idea'
 apply plugin: "org.grails.grails-web"
 apply plugin: "org.grails.grails-gsp"
 apply plugin: "com.moowork.node"
+apply plugin: "com.bmuschko.docker-remote-api"
 
 ext {
     grailsVersion = project.grailsVersion
     gradleWrapperVersion = project.gradleWrapperVersion
     cacheDir = gradle.getGradleUserHomeDir() as String ?: "${System.getProperty("user.home")}/.cache/gradle"
     new File(cacheDir).mkdirs()
+
+    commit = System.getenv("COMMIT_HASH") ?: "git rev-parse HEAD".execute().text.trim()
 }
 
 assets {
@@ -48,9 +54,24 @@ assets {
 }
 
 node {
-    version = '4.3.0'
+    version = '4.3.1'
     npmVersion = '2.14.12'
     download = true
+}
+
+/** Use the typical docker-machine environment variables to configure docker. */
+ext {
+    dockerHost = null
+}
+docker {
+    if (System.getenv('DOCKER_TLS_VERIFY') == '1' && System.getenv('DOCKER_CERT_PATH')) {
+        url = System.getenv('DOCKER_HOST')?.replaceAll('tcp://', 'https://')
+        certPath = new File(System.getenv('DOCKER_CERT_PATH'))
+        project.dockerHost = new URL(url).host
+    } else if (System.getenv('DOCKER_HOST')) {
+        url = System.getenv('DOCKER_HOST')?.replaceAll('tcp://', 'http://')
+        project.dockerHost = new URL(url).host
+    }
 }
 
 repositories {
@@ -214,3 +235,283 @@ clean.delete << file('grails-app/assets/javascripts/bower_components')
 clean.delete << file('grails-app/assets/stylesheets/bower_components')
 clean.delete << file('node_modules')
 clean.delete << file('bower_components')
+
+build.dependsOn ':staticsite:generate'
+
+/**
+ * Container based tasks follow. These tasks allow all build operations to be done in containers,
+ * thus reducing the dependencies required on the build host to be Java and Docker.
+ */
+
+/** Download all dependencies, this will be run in a container to cache the dependencies. */
+task primeCache << {
+  project.rootProject.allprojects.each { subProject ->
+    subProject.buildscript.configurations.each { configuration ->
+      configuration.resolve()
+    }
+    subProject.configurations.each { configuration ->
+      configuration.resolve()
+    }
+  }
+}
+
+/** The `dockerOutput` directory holds all build outputs from the containers. */
+ext {
+  dockerOutput = "${project.buildDir}/docker/output"
+  hostMap = [:]
+}
+
+/** We want to maintain any proxy configurations and there might be hosts in /etc/hosts, so let's resolve those */
+new File("/etc/hosts").eachLine { String line ->
+    def split = line.split('\\s+')
+    def ip = split[0]
+    if ([~/#.*/, ~/127\..*/, ~/::.*/, ~/255\..*/].find { ip ==~ it } == null) {
+        split.drop(1).each { host ->
+            hostMap[host] = ip
+        }
+    }
+}
+String hostResolve(String str) {
+    hostMap.each { host, ip ->
+        str = str.replaceAll("//${host}([:/])", "//${ip}\$1")
+    }
+    str
+}
+
+/** Construct the context for a base image which is the source code without build artifacts. */
+task dockerBaseContext(type: Sync) {
+  group = "staging"
+  into "${project.buildDir}/docker/base"
+  from project.projectDir
+
+  def initGradle = new File("${cacheDir}/init.gradle")
+  if (initGradle.exists() && initGradle.file) {
+      from(initGradle) {
+          filter { hostResolve(it) }
+      }
+  }
+
+  def npmrc = new File("${System.getProperty("user.home")}/.npmrc")
+  if (npmrc.exists() && npmrc.file) {
+      from(npmrc) {
+          filter { (it ==~ /\s*registry\s*=.*/ || it ==~ /\s*phantomjs.*=.*/) ? hostResolve(it) : null }
+      }
+  }
+
+  exclude '.git'
+  // Re-use the information in .gitignore to exclude non-source artifacts (build, IDE, etc.)
+  if (file('.gitignore').exists()) {
+    file('.gitignore').eachLine { exclude it.replaceFirst("^/", "") }
+  }
+
+  doLast {
+      if (hostMap['nexus']) {
+          def wrapperProps = file("${project.buildDir}/docker/base/gradle/wrapper/gradle-wrapper.properties")
+          if (wrapperProps.file) {
+              def text = wrapperProps.text
+              text = text.replaceAll(
+                      ~/https\\:\\/\\/services.gradle.org\\/distributions\\/gradle-([0-9.]+)-([A-Za-z]+).zip/,
+                      "http\\\\://${hostMap['nexus']}:9081/content/groups/public/org/gradle/wrapper/\$1/gradle-\$1-\$2.zip")
+              wrapperProps.text = text
+          }
+      }
+  }
+}
+
+/** 
+ * Dockerfile for a base image that contains Gradle, Node and other dependencies stored in the cache.  This
+ * image will be re-built occasionally to reflect new dependencies. There is a bit of complexity here with using
+ * a user account named 'r'. Bower refuses to run as root, so we need to do this.
+ */
+task dockerBaseDockerfile(type: Dockerfile) {
+  dependsOn dockerBaseContext
+  destFile = file("${project.buildDir}/docker/base/Dockerfile")
+  from 'java:8'
+  maintainer 'Patrick Double "pat@patdouble.com"' 
+  environmentVariable 'TERM', 'dumb'
+  environmentVariable 'GRADLE_USER_HOME', '/cache'
+  runCommand "adduser --disabled-password --gecos '' r  && adduser r sudo && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
+  runCommand "mkdir /cache && chown r /cache && mkdir /app && chown r /app && mkdir /prime && chown r /prime"
+  runCommand 'echo org.gradle.daemon=true >> /cache/gradle.properties'
+  workingDir '/prime'
+
+  copyFile 'gradle', '/prime/gradle/'
+  copyFile 'gradlew', '/prime/'
+  user 'r'
+  runCommand './gradlew --version' // cache gradle distro before dependencies
+
+  user 'root'
+  copyFile '.', '/prime/'
+  runCommand 'chown -R r /prime'
+  user 'r'
+  if (new File(destFile.parentFile, "init.gradle").file) {
+      copyFile 'init.gradle', '/cache/'
+  }
+  if (new File(destFile.parentFile, ".npmrc").file) {
+      copyFile '.npmrc', '${HOME}/'
+  }
+  runCommand './gradlew -is nodeSetup'
+  runCommand './gradlew -is npmPackages'
+  runCommand './gradlew -is bowerInstall'
+  runCommand './gradlew -is primeCache'
+  user 'root'
+  runCommand 'rm -rf /prime'
+  user 'r'
+  workingDir '/app'
+  //'/cache (GRADLE_USER_HOME) is populated with dependencies'
+  //'Issue the following commands before running the container:'
+  //'  COPY . /app'
+  //'  RUN chown -R r /app'
+  //'  USER r'
+}
+
+/**
+ * Build a base image that can be built upon with the source code. The tag should always be
+ * 'latest' since we'll use this for multiple versions of the app code. It's not terribly important to
+ * keep this synced up with the current code base, new or changed dependencies will be downloaded.
+ * A periodic rebuild of the base image is recommended with possibly a manual build when things change
+ * dramatically.
+ */
+task dockerBaseImage(type: DockerBuildImage) {
+  group = 'staging'
+  dependsOn dockerBaseDockerfile
+  inputDir = dockerBaseDockerfile.destFile.parentFile
+  tag = "double16/pet-store_base"
+}
+
+/**
+ * Dockerfile for an app container with the current source code, ready to be built. The entry point will
+ * be Gradle so only the tasks need to be sent.
+ */
+task dockerAppDockerfile(type: Dockerfile) {
+  group = 'staging'
+  dependsOn dockerBaseContext
+  destFile = file("${project.buildDir}/docker/base/Dockerfile.app")
+  from dockerBaseImage.tag
+  maintainer 'Patrick Double "pat@patdouble.com"'
+  environmentVariable 'COMMIT_HASH', commit
+  user 'root'
+  workingDir '/app'
+  copyFile '.', '/app/'
+  runCommand 'chown -R r /app'
+  user 'r'
+  entryPoint './gradlew','--info','--stacktrace'
+  defaultCommand 'check'
+}
+
+/**
+ * Build the app container and tag with the git short commit hash.
+ */
+task dockerAppImage(type: DockerBuildImage) {
+  group = 'staging'
+  dependsOn dockerAppDockerfile
+  dockerFile = dockerAppDockerfile.destFile
+  inputDir = dockerAppDockerfile.destFile.parentFile
+  tag = "double16/pet-store_app:${'git rev-parse HEAD'.execute().text.trim().take(12) ?: 'latest'}"
+}
+
+/**
+ * The following set of tasks create a container that executes the `check` task and extracts
+ * the test artifacts into the host filesystem.
+ */
+task dockerCreateCheck(type: DockerCreateContainer) {
+  dependsOn dockerAppImage
+  targetImageId { dockerAppImage.getImageId() }
+  cmd = ['check']
+  attachStdout = true
+  attachStderr = true
+}
+task dockerStartCheck(type: DockerStartContainer) {
+  dependsOn dockerCreateCheck
+  targetContainerId { dockerCreateCheck.getContainerId() }
+}
+/**
+ * We need to wait for the `check` task to complete, docker is running this in the background.
+ */
+task dockerWaitCheck(type: DockerWaitContainer) {
+  dependsOn dockerCreateCheck
+  targetContainerId { dockerCreateCheck.getContainerId() }
+}
+task dockerCheckResults(type: DockerCopyFileFromContainer) {
+  dependsOn dockerWaitCheck
+  targetContainerId { dockerCreateCheck.getContainerId() }
+  remotePath '/app/build/test-results'
+  hostPath "${dockerOutput}/test-results"
+  doFirst {
+    file(dockerOutput).mkdirs()
+    file(hostPath).deleteDir()
+  }
+  outputs.dir file("${dockerOutput}/test-results")
+}
+task dockerCheckReports(type: DockerCopyFileFromContainer) {
+  dependsOn dockerWaitCheck
+  targetContainerId { dockerCreateCheck.getContainerId() }
+  remotePath '/app/build/reports'
+  hostPath "${dockerOutput}/reports"
+  doFirst {
+    file(dockerOutput).mkdirs()
+    file(hostPath).deleteDir()
+  }
+  outputs.dir file("${dockerOutput}/reports")
+}
+/**
+ * NOTE: this is the task to run
+ */
+task dockerCheck {
+  dependsOn dockerStartCheck
+  finalizedBy dockerCheckResults, dockerCheckReports
+}
+/**
+ * End of 'check' container tasks.
+ */
+
+task dockerClean(type: Exec) {
+    group = "staging"
+    description = "Stop and remove all docker containers"
+    commandLine '/bin/sh','-c','docker ps -qa | xargs docker rm -f ; docker volume ls -q | xargs docker volume rm'
+}
+
+/**
+ * Static site container.
+ */
+task dockerStaticSiteContext(type: Sync) {
+  group = "staging"
+  dependsOn ':staticsite:generate'
+  into "${project.buildDir}/docker/staticsite/content"
+  from project(':staticsite').file('target')
+}
+
+task dockerStaticSiteDockerfile(type: Dockerfile) {
+  group = 'staging'
+  dependsOn dockerStaticSiteContext
+  destFile = file("${project.buildDir}/docker/staticsite/Dockerfile")
+  from 'sebp/lighttpd:latest'
+  maintainer 'Patrick Double "pat@patdouble.com"'
+  copyFile 'content', '/var/www/localhost/htdocs/'
+}
+
+task dockerStaticSiteImage(type: DockerBuildImage) {
+  group = 'staging'
+  dependsOn dockerStaticSiteDockerfile
+  dockerFile = dockerStaticSiteDockerfile.destFile
+  inputDir = dockerStaticSiteDockerfile.destFile.parentFile
+  tag = "double16/pet-store_site:${'git rev-parse HEAD'.execute().text.trim().take(12) ?: 'latest'}"
+}
+
+task dockerStaticSiteCreate(type: DockerCreateContainer) {
+  dependsOn dockerStaticSiteImage
+  targetImageId { dockerStaticSiteImage.getImageId() }
+  portBindings = ['80']
+}
+
+task dockerStaticSiteStart(type: DockerStartContainer) {
+  dependsOn dockerStaticSiteCreate
+  targetContainerId { dockerStaticSiteCreate.getContainerId() }
+}
+
+task dockerStaticSiteRemove(type: DockerRemoveContainer) {
+  dependsOn dockerStaticSiteCreate
+  targetContainerId { dockerStaticSiteCreate.getContainerId() }
+  force = true
+}
+
