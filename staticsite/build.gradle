@@ -36,7 +36,12 @@ buildscript {
             throw new RuntimeException('Grain version is not set in properties file')
         }
     }
+    dependencies {
+        classpath ('gradle.plugin.org.aim42:htmlSanityCheck:0.9.3')
+    }
 }
+
+apply plugin: 'org.aim42.htmlSanityCheck'
 
 configurations.all {
     exclude group: 'commons-logging'
@@ -158,4 +163,11 @@ task copyFontawesome {
 
 generate.dependsOn copyBootstrap, copyFontawesome
 preview.dependsOn copyBootstrap, copyFontawesome
+
+htmlSanityCheck {
+    dependsOn generate
+    sourceDir = file("target")
+    checkingResultsDir = file("${buildDir}/reports/htmlchecks")
+    checkExternalLinks = false
+}
 
