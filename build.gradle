@@ -54,7 +54,7 @@ assets {
 }
 
 node {
-    version = '4.3.1'
+    version = '4.3.2'
     npmVersion = '2.14.12'
     download = true
 }
@@ -354,6 +354,8 @@ task dockerBaseDockerfile(type: Dockerfile) {
   runCommand './gradlew -is npmPackages'
   runCommand './gradlew -is bowerInstall'
   runCommand './gradlew -is primeCache'
+  runCommand 'mv /prime/node_modules /cache'
+  runCommand 'mv /prime/bower_components /cache'
   user 'root'
   runCommand 'rm -rf /prime'
   user 'r'
@@ -392,6 +394,8 @@ task dockerAppDockerfile(type: Dockerfile) {
   environmentVariable 'COMMIT_HASH', commit
   user 'root'
   workingDir '/app'
+  runCommand '[ -d /cache/node_modules ] && cp -a /cache/node_modules /app || true'
+  runCommand '[ -d /cache/bower_components ] && cp -a /cache/bower_components /app || true'
   copyFile '.', '/app/'
   runCommand 'chown -R r /app'
   user 'r'
@@ -468,7 +472,7 @@ task dockerCheck {
 task dockerClean(type: Exec) {
     group = "staging"
     description = "Stop and remove all docker containers"
-    commandLine '/bin/sh','-c','docker ps -qa | xargs docker rm -f ; docker volume ls -q | xargs docker volume rm'
+    commandLine '/bin/sh','-c','docker ps -qa | xargs docker rm -f; docker volume ls -q | xargs docker volume rm; docker images | grep \'<none>\' | tr -s [:space:] | cut -d " " -f 3 | xargs docker rmi'
 }
 
 /**
