@@ -54,7 +54,7 @@ assets {
 }
 
 node {
-    version = '4.3.2'
+    version = '5.9.0'
     npmVersion = '2.14.12'
     download = true
 }
