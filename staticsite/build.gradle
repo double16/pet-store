@@ -102,6 +102,8 @@ task generate(type: JavaExec) {
     classpath sourceSets.main.runtimeClasspath
     main = mainClassName
     args name
+    inputs.files('content','theme','SiteConfig.groovy')
+    outputs.file('target')
 }
 
 task preview(type: JavaExec) {
