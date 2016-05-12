@@ -58,6 +58,7 @@ repositories {
 dependencies {
     compile "com.sysgears.grain:grain:$project.grainVersion"
 
+    compile 'org.codehaus.groovy:groovy-ant:2.2.1'
     compile 'org.codehaus.groovy:groovy:2.1.2'
 }
 
