@@ -19,6 +19,7 @@ buildscript {
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
         classpath 'com.moowork.gradle:gradle-node-plugin:0.10'
         classpath 'com.bmuschko:gradle-docker-plugin:2.6.7'
+		classpath 'com.netflix.nebula:gradle-lint-plugin:0.27.0'
     }
 }
 
@@ -38,6 +39,9 @@ apply plugin: "org.grails.grails-web"
 apply plugin: "org.grails.grails-gsp"
 apply plugin: "com.moowork.node"
 apply plugin: "com.bmuschko.docker-remote-api"
+apply plugin: 'nebula.lint'
+
+gradleLint.rules = ['all-dependency','depenency-parenthesis','depenency-tuple']
 
 ext {
     grailsVersion = project.grailsVersion
