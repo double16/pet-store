@@ -11,6 +11,9 @@ buildscript {
     }
     repositories {
         mavenLocal()
+        if (System.getenv('MAVEN_REPO')) {
+          maven { url { System.getenv('MAVEN_REPO') } }
+        }
         maven { url "https://repo.grails.org/grails/core" }
     }
     dependencies {
@@ -76,6 +79,9 @@ docker {
 
 repositories {
     mavenLocal()
+    if (System.getenv('MAVEN_REPO')) {
+      maven { url { System.getenv('MAVEN_REPO') } }
+    }
     maven { url "https://repo.grails.org/grails/core" }
 }
 
