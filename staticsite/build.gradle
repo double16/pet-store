@@ -44,6 +44,9 @@ configurations.all {
 }
 
 repositories {
+    if (System.getenv('MAVEN_REPO')) {
+      maven { url { System.getenv('MAVEN_REPO') } }
+    }
     mavenCentral()
     maven {
         url 'https://oss.sonatype.org/content/groups/public/'
