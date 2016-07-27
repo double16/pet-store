@@ -7,4 +7,6 @@ cache:
     - $HOME/.gradle/wrapper/
 jdk:
   - oraclejdk8
+script:
+  - ./gradlew check -Dscan
 

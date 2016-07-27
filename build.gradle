@@ -26,7 +26,8 @@ buildscript {
 }
 
 plugins {
-    id "io.spring.dependency-management" version "0.4.0.RELEASE"
+    id 'com.gradle.build-scan' version '1.0'
+    id 'io.spring.dependency-management' version '0.4.0.RELEASE'
 }
 
 version "0.1"
@@ -41,6 +42,11 @@ apply plugin: "org.grails.grails-web"
 apply plugin: "org.grails.grails-gsp"
 apply plugin: "com.moowork.node"
 apply plugin: "com.bmuschko.docker-remote-api"
+
+buildScan {
+    licenseAgreementUrl = 'https://gradle.com/terms-of-service'
+    licenseAgree = 'yes'
+}
 
 ext {
     grailsVersion = project.grailsVersion
