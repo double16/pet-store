@@ -10,7 +10,7 @@ void gradle(Collection<String> tasks, Collection<String> switches = null) {
       gradleCommand += switches.join(' ')
   }
 
-  if (isWindows()) {
+  if (System.properties['os.name'].toLowerCase().contains('windows')) {
     bat gradleCommand.toString()
   } else {
     sh gradleCommand.toString()
