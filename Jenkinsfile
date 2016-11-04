@@ -38,7 +38,7 @@ stage 'Integration Test'
 node {
   unstash 'source'
   unstash 'unitTests'
-  gradle(['integrationTest'], ['-i'])
+  //gradle(['integrationTest'], ['-i'])
   stash includes: 'build/test-results/**', name: 'allTests'
 }
 
