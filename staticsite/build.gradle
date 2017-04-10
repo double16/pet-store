@@ -36,7 +36,15 @@ buildscript {
             throw new RuntimeException('Grain version is not set in properties file')
         }
     }
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath ('gradle.plugin.org.aim42:htmlSanityCheck:0.9.6')
+    }
 }
+
+apply plugin: 'org.aim42.htmlSanityCheck'
 
 configurations.all {
     exclude group: 'commons-logging'
@@ -56,6 +64,7 @@ repositories {
 dependencies {
     compile "com.sysgears.grain:grain:$project.grainVersion"
 
+    compile 'org.codehaus.groovy:groovy-ant:2.2.1'
     compile 'org.codehaus.groovy:groovy:2.1.2'
 }
 
@@ -100,6 +109,8 @@ task generate(type: JavaExec) {
     classpath sourceSets.main.runtimeClasspath
     main = mainClassName
     args name
+    inputs.files('content','theme','SiteConfig.groovy')
+    outputs.file('target')
 }
 
 task preview(type: JavaExec) {
@@ -161,4 +172,11 @@ task copyFontawesome {
 
 generate.dependsOn copyBootstrap, copyFontawesome
 preview.dependsOn copyBootstrap, copyFontawesome
+
+htmlSanityCheck {
+    dependsOn generate
+    sourceDir = file("target")
+    checkingResultsDir = file("${buildDir}/reports/htmlchecks")
+    checkExternalLinks = false
+}
 

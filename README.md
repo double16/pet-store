@@ -4,6 +4,7 @@ pet-store
 Grails 3 example for demonstrating various integrations.
 
 [ ![Codeship Status for double16/pet-store](https://codeship.com/projects/c2393a60-c552-0132-c695-32942c6ecf59/status?branch=master)](https://codeship.com/projects/74368)
+[![CircleCI](https://circleci.com/gh/double16/pet-store.svg?style=svg&circle-token=0f313dae899223d1d8fd9f28bdf2401d7bba98a1)](https://circleci.com/gh/double16/pet-store)
 
 # Heroku
 Heroku recommends building your application on the Heroku platform by pushing your git repo. However, there is a 15 minute

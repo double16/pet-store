@@ -1,0 +1,4 @@
+#!/bin/bash
+
+java -Dgrails.env=prod -Dserver.port=${PORT:-8080} -Dserver.host=${OPENSHIFT_DIY_IP:-0.0.0.0} ${JAVA_OPTS} -jar ${HOME}/pet-store-*.war
+

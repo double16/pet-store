@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# restore build artifacts
+# TODO
+
+# move the application source
+mv /tmp/s2i/src ${HOME}/src
+
+# build
+pushd ${HOME}/src
+./gradlew build
+
+# install
+cp build/libs/pet-store*.war ${HOME}
+
+popd
+
+
