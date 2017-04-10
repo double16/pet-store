@@ -36,6 +36,9 @@ buildscript {
             throw new RuntimeException('Grain version is not set in properties file')
         }
     }
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
     dependencies {
         classpath ('gradle.plugin.org.aim42:htmlSanityCheck:0.9.6')
     }
