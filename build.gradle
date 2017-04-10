@@ -11,6 +11,9 @@ buildscript {
     }
     repositories {
         mavenLocal()
+        if (System.getenv('MAVEN_REPO')) {
+          maven { url { System.getenv('MAVEN_REPO') } }
+        }
         maven { url "https://repo.grails.org/grails/core" }
     }
     dependencies {
@@ -25,7 +28,8 @@ buildscript {
 }
 
 plugins {
-    id "io.spring.dependency-management" version "0.4.0.RELEASE"
+    id 'com.gradle.build-scan' version '1.0'
+    id 'io.spring.dependency-management' version '0.4.0.RELEASE'
 }
 
 allprojects {
@@ -47,6 +51,11 @@ apply plugin: "com.bmuschko.docker-remote-api"
 apply plugin: 'nebula.lint'
 
 gradleLint.rules = ['all-dependency','depenency-parenthesis','depenency-tuple']
+
+buildScan {
+    licenseAgreementUrl = 'https://gradle.com/terms-of-service'
+    licenseAgree = 'yes'
+}
 
 ext {
     grailsVersion = project.grailsVersion
@@ -85,6 +94,9 @@ docker {
 
 repositories {
     mavenLocal()
+    if (System.getenv('MAVEN_REPO')) {
+      maven { url { System.getenv('MAVEN_REPO') } }
+    }
     maven { url "https://repo.grails.org/grails/core" }
 }
 
