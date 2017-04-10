@@ -19,12 +19,17 @@ buildscript {
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
         classpath 'com.moowork.gradle:gradle-node-plugin:0.10'
         classpath 'com.bmuschko:gradle-docker-plugin:2.6.7'
-		classpath 'com.netflix.nebula:gradle-lint-plugin:0.27.0'
+        classpath 'com.netflix.nebula:gradle-lint-plugin:7.3.5'
+        classpath 'com.github.ben-manes:gradle-versions-plugin:0.14.0'
     }
 }
 
 plugins {
     id "io.spring.dependency-management" version "0.4.0.RELEASE"
+}
+
+allprojects {
+    apply plugin: 'com.github.ben-manes.versions'
 }
 
 version "0.1"

@@ -37,7 +37,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath ('gradle.plugin.org.aim42:htmlSanityCheck:0.9.3')
+        classpath ('gradle.plugin.org.aim42:htmlSanityCheck:0.9.6')
     }
 }
 
