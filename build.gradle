@@ -1,9 +1,14 @@
+import com.bmuschko.gradle.docker.tasks.container.DockerCopyFileFromContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerWaitContainer
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+import com.bmuschko.gradle.docker.tasks.image.Dockerfile
 import groovyx.net.http.RESTClient
-import org.apache.http.impl.client.DefaultHttpClient
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.FileEntity
-import com.bmuschko.gradle.docker.tasks.image.*
-import com.bmuschko.gradle.docker.tasks.container.*
+import org.apache.http.impl.client.DefaultHttpClient
 
 buildscript {
     ext {
@@ -18,18 +23,18 @@ buildscript {
     }
     dependencies {
         classpath "org.grails:grails-gradle-plugin:$grailsVersion"
-        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:2.14.1"
+        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:2.14.3"
         classpath "org.grails.plugins:hibernate5:${gormVersion-".RELEASE"}"
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
         classpath 'com.moowork.gradle:gradle-node-plugin:0.10'
         classpath 'com.bmuschko:gradle-docker-plugin:2.6.7'
-        classpath 'com.netflix.nebula:gradle-lint-plugin:7.8.0'
-        classpath 'com.github.ben-manes:gradle-versions-plugin:0.14.0'
+        classpath 'com.netflix.nebula:gradle-lint-plugin:7.9.1'
+        classpath 'com.github.ben-manes:gradle-versions-plugin:0.15.0'
     }
 }
 
 plugins {
-    id 'com.gradle.build-scan' version '1.7.4'
+    id 'com.gradle.build-scan' version '1.8'
 }
 
 apply plugin:"eclipse"
@@ -105,30 +110,73 @@ repositories {
 }
 
 dependencies {
-    compile "org.springframework.boot:spring-boot-starter-logging"
+    compile 'org.codehaus.groovy:groovy-all:2.4.10'
+    compile 'org.grails:grails-plugin-rest:3.2.10'
+    compile 'org.springframework:spring-tx:4.3.7.RELEASE'
+    compile 'io.projectreactor:reactor-core:2.0.8.RELEASE'
+    compile 'org.apache.tomcat.embed:tomcat-embed-core:8.5.13'
+    compile 'org.grails:grails-web-sitemesh:3.2.10'
+    compile 'org.grails:grails-bootstrap:3.2.10'
+    compile 'org.springframework:spring-beans:4.3.7.RELEASE'
+    compile 'org.springframework.boot:spring-boot:1.4.6.RELEASE'
+    compile 'org.springframework:spring-context:4.3.7.RELEASE'
+    compile 'org.grails:grails-web-url-mappings:3.2.10'
+    compile 'org.grails:grails-plugin-mimetypes:3.2.10'
+    compile 'org.springframework:spring-webmvc:4.3.7.RELEASE'
+    compile 'org.grails:grails-web-databinding:3.2.10'
+    compile 'org.grails:grails-databinding:3.2.10'
+    compile 'org.grails:grails-datastore-core:6.0.10.RELEASE'
+    compile 'org.grails:grails-web-common:3.2.10'
+    compile 'org.grails:grails-plugin-async:3.2.10'
+    compile 'org.grails:grails-web-taglib:3.2.10'
+    compile 'org.grails:grails-datastore-gorm:6.0.10.RELEASE'
+    compile 'org.grails:grails-taglib:3.2.10'
+    compile 'io.projectreactor:reactor-bus:2.0.8.RELEASE'
+    compile 'org.codehaus.groovy:groovy:2.4.10'
+    compile 'org.grails:grails-plugin-events:3.2.10'
+    compile 'org.grails:grails-web-mvc:3.2.10'
+    compile 'org.slf4j:slf4j-api:1.7.25'
+    compile 'org.grails:grails-plugin-converters:3.2.10'
+    compile 'org.grails:grails-plugin-controllers:3.2.10'
+    compile 'org.springframework:spring-web:4.3.7.RELEASE'
+    compile 'org.grails:grails-plugin-domain-class:3.2.10'
+    testCompile 'org.grails:grails-datastore-simple:6.0.10.RELEASE'
+    testCompile 'org.springframework:spring-test:4.3.7.RELEASE'
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.grails:grails-test:3.2.10'
+    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
     compile "org.springframework.boot:spring-boot-autoconfigure"
     compile "org.grails:grails-core"
-    compile "org.springframework.boot:spring-boot-starter-actuator"
-    compile "org.springframework.boot:spring-boot-starter-tomcat"
     compile "org.grails:grails-dependencies"
     compile "org.grails:grails-web-boot"
-    compile "org.grails.plugins:hibernate5"
-    compile "org.hibernate:hibernate-core:5.1.3.Final"
-    compile "org.hibernate:hibernate-ehcache:5.1.3.Final"
+    runtime 'org.hibernate:hibernate-ehcache:5.1.3.Final'
     console "org.grails:grails-console"
     profile "org.grails.profiles:web"
-    runtime "com.bertramlabs.plugins:asset-pipeline-grails:2.14.1"
+    runtime "com.bertramlabs.plugins:asset-pipeline-grails:2.14.3"
     runtime "org.grails.plugins:scaffolding"
     runtime "org.grails.plugins:cache"
     runtime "com.h2database:h2"
     testCompile "org.grails:grails-plugin-testing"
-    testCompile "org.grails.plugins:geb"
 
     // Note: It is recommended to update to a more robust driver (Chrome, Firefox etc.)
-    testRuntime "org.seleniumhq.selenium:selenium-htmlunit-driver:2.47.1"
-    testRuntime "net.sourceforge.htmlunit:htmlunit:2.18"
+    testRuntime "org.seleniumhq.selenium:selenium-htmlunit-driver:2.52.0"
+    testRuntime "net.sourceforge.htmlunit:htmlunit:2.27"
 
     console "org.grails:grails-console"
+}
+
+allprojects {
+    dependencyUpdates.resolutionStrategy = {
+        componentSelection { rules ->
+            rules.all { ComponentSelection selection ->
+                if (['.M', '.RC', 'beta', 'alpha', '-rc'].find {
+                    selection.candidate.version.toLowerCase().contains(it.toLowerCase())
+                }) {
+                    selection.reject('unreleased')
+                }
+            }
+        }
+    }
 }
 
 task wrapper(type: Wrapper) {
