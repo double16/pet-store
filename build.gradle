@@ -26,15 +26,15 @@ buildscript {
         classpath "com.bertramlabs.plugins:asset-pipeline-gradle:2.14.3"
         classpath "org.grails.plugins:hibernate5:${gormVersion-".RELEASE"}"
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
-        classpath 'com.moowork.gradle:gradle-node-plugin:0.10'
         classpath 'com.bmuschko:gradle-docker-plugin:2.6.7'
-        classpath 'com.netflix.nebula:gradle-lint-plugin:7.9.1'
+        classpath 'com.netflix.nebula:gradle-lint-plugin:7.9.2'
         classpath 'com.github.ben-manes:gradle-versions-plugin:0.15.0'
     }
 }
 
 plugins {
     id 'com.gradle.build-scan' version '1.8'
+    id 'com.craigburke.client-dependencies' version '1.4.0'
 }
 
 apply plugin:"eclipse"
@@ -43,7 +43,6 @@ apply plugin:"war"
 apply plugin:"org.grails.grails-web"
 apply plugin:"org.grails.grails-gsp"
 apply plugin:"asset-pipeline"
-apply plugin: "com.moowork.node"
 apply plugin: "com.bmuschko.docker-remote-api"
 apply plugin: 'nebula.lint'
 
@@ -53,8 +52,6 @@ allprojects {
 
 version "0.1"
 group "pet.store"
-
-gradleLint.rules = ['all-dependency','depenency-parenthesis','depenency-tuple']
 
 buildScan {
     licenseAgreementUrl = 'https://gradle.com/terms-of-service'
@@ -78,12 +75,6 @@ bootRun {
 assets {
     minifyJs = true
     minifyCss = true
-}
-
-node {
-    version = '4.4.5'
-    npmVersion = '2.15.5'
-    download = true
 }
 
 /** Use the typical docker-machine environment variables to configure docker. */
@@ -144,7 +135,6 @@ dependencies {
     testCompile 'org.springframework:spring-test:4.3.7.RELEASE'
     testCompile 'junit:junit:4.12'
     testCompile 'org.grails:grails-test:3.2.10'
-    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
     compile "org.springframework.boot:spring-boot-autoconfigure"
     compile "org.grails:grails-core"
     compile "org.grails:grails-dependencies"
@@ -165,6 +155,22 @@ dependencies {
     console "org.grails:grails-console"
 }
 
+clientDependencies {
+    yarn {
+        'jquery'('~2.1.0')
+        "angular"("~1.3.15")
+        "angular-route"("~1.3.15")
+        "angular-loader"("~1.3.15")
+        "angular-animate"("~1.3.15")
+        "angular-cookies"("~1.3.15")
+        "angular-resource"("~1.3.15")
+        "angular-sanitize"("~1.3.15")
+        "angular-touch"("~1.3.15")
+        "angular-mocks"("~1.3.15")
+        "animate.css"("3.x")
+    }
+}
+
 allprojects {
     dependencyUpdates.resolutionStrategy = {
         componentSelection { rules ->
@@ -177,6 +183,9 @@ allprojects {
             }
         }
     }
+
+    gradleLint.rules = ['all-dependency','depenency-parenthesis','depenency-tuple']
+    autoLintGradle.onlyIf { false }
 }
 
 task wrapper(type: Wrapper) {
@@ -249,61 +258,8 @@ task deployToHeroku(dependsOn: herokuSources) {
     onlyIf { System.getenv('HEROKU_AUTH_TOKEN') && System.getenv('HEROKU_APP_NAME') }
 }
 
-task npmCacheConfig(type: NpmTask) {
-    description = "Configure the NPM cache"
-    def npmCacheDir = "${cacheDir}/caches/npm"
-    outputs.files file(npmCacheDir)
-    args = [ 'config', 'set', 'cache', npmCacheDir ]
-}
-
-task npmPackages(type: NpmTask, dependsOn: npmCacheConfig) {
-    description = "Install Node.js packages"
-    args = [ 'install' ]
-    inputs.files file('package.json')
-    outputs.files file('node_modules')
-}
-
-task bowerInstall(type: NodeTask) {
-    script = file('node_modules/.bin/bower')
-    args = ["--config.storage.cache=${cacheDir}/caches/bower/cache",
-            "--config.storage.packages=${cacheDir}/caches/bower/packages",
-            "--config.storage.registry=${cacheDir}/caches/bower/registry",
-            'install']
-    inputs.files file('bower.json')
-    outputs.files file('bower_components')
-    dependsOn npmPackages
-}
-
-task bowerSyncJavascript(type: Sync) {
-    from 'bower_components'
-    into "grails-app/assets/javascripts/bower_components"
-    exclude '**/*.min.js'
-    exclude '**/angular*/index.js'
-    exclude '**/angular*/ng*.js'
-    include 'jquery/dist/jquery.js'
-    include 'angular*/**/*.js'
-    dependsOn bowerInstall
-}
-
-task bowerSyncStylesheets(type: Sync) {
-    from 'bower_components'
-    into "grails-app/assets/stylesheets/bower_components"
-    include 'angular*/**/*.css'
-    include 'animate.css/animate.css'
-    dependsOn bowerInstall
-}
-
-task bowerPackages() {
-    dependsOn bowerSyncJavascript, bowerSyncStylesheets
-}
-
-processResources.dependsOn bowerPackages
-assetCompile.dependsOn bowerPackages
-
-clean.delete << file('grails-app/assets/javascripts/bower_components')
-clean.delete << file('grails-app/assets/stylesheets/bower_components')
-clean.delete << file('node_modules')
-clean.delete << file('bower_components')
+processResources.dependsOn clientInstall
+assetCompile.dependsOn clientInstall
 
 build.dependsOn ':staticsite:generate'
 
@@ -421,9 +377,7 @@ task dockerBaseDockerfile(type: Dockerfile) {
   if (new File(destFile.parentFile, ".npmrc").file) {
       copyFile '.npmrc', '${HOME}/'
   }
-  runCommand './gradlew -is nodeSetup'
-  runCommand './gradlew -is npmPackages'
-  runCommand './gradlew -is bowerInstall'
+  runCommand './gradlew -is clientInstall'
   runCommand './gradlew -is primeCache'
   runCommand 'mv /prime/node_modules /cache'
   runCommand 'mv /prime/bower_components /cache'
@@ -465,8 +419,6 @@ task dockerAppDockerfile(type: Dockerfile) {
   environmentVariable 'COMMIT_HASH', commit
   user 'root'
   workingDir '/app'
-  runCommand '[ -d /cache/node_modules ] && cp -a /cache/node_modules /app || true'
-  runCommand '[ -d /cache/bower_components ] && cp -a /cache/bower_components /app || true'
   copyFile '.', '/app/'
   runCommand 'chown -R r /app'
   user 'r'

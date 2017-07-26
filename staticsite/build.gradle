@@ -1,31 +1,3 @@
-apply plugin: 'maven'
-apply plugin: 'groovy'
-apply plugin: 'idea'
-apply plugin: 'eclipse'
-
-/**
- * Content changed from grain-theme-business by Patrick Double <pat@patdouble.com>
- */
-
-group = 'com.sysgears.grain'
-version = '0.4.2'
-defaultTasks 'preview'
-
-ext {
-    mainClassName = [project.group, 'Main'].join('.')
-    compatibilityVersion = JavaVersion.VERSION_1_7
-    bowerComponentsDir = 'bower_components'
-}
-
-sourceCompatibility = compatibilityVersion
-targetCompatibility = compatibilityVersion
-
-clean.delete << file('.cache')
-clean.delete << file('target')
-clean.delete << file('theme/fonts/vendor')
-clean.delete << file('theme/javascripts/vendor')
-clean.delete << file('theme/sass/vendor')
-
 buildscript {
     project.ext {
         grainProps = new Properties()
@@ -44,7 +16,35 @@ buildscript {
     }
 }
 
+apply plugin: 'maven'
+apply plugin: 'groovy'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
 apply plugin: 'org.aim42.htmlSanityCheck'
+apply plugin: 'com.craigburke.client-dependencies'
+
+/**
+ * Content changed from grain-theme-business by Patrick Double <pat@patdouble.com>
+ */
+
+group = 'com.sysgears.grain'
+version = '0.4.2'
+defaultTasks 'preview'
+
+ext {
+    mainClassName = [project.group, 'Main'].join('.')
+    compatibilityVersion = JavaVersion.VERSION_1_8
+    bowerComponentsDir = 'src/assets/vendor'
+}
+
+sourceCompatibility = compatibilityVersion
+targetCompatibility = compatibilityVersion
+
+clean.delete << file('.cache')
+clean.delete << file('target')
+clean.delete << file('theme/fonts/vendor')
+clean.delete << file('theme/javascripts/vendor')
+clean.delete << file('theme/sass/vendor')
 
 configurations.all {
 }
@@ -65,6 +65,14 @@ dependencies {
     compile 'org.codehaus.groovy:groovy:2.4.10'
 }
 
+clientDependencies {
+    bower {
+        "bootstrap"("3.3.6")
+        "bootstrap-sass-official"("3.3.6")
+        "fontawesome"("4.5.0")
+    }
+}
+
 sourceSets {
     main {
         groovy {
@@ -75,24 +83,6 @@ sourceSets {
 
 project.ext {
     classpath = sourceSets.main.runtimeClasspath
-}
-
-task gendeps {
-    doLast {
-        def classpath = project.classpath.files
-        def depFile = new File(".site-${project.grainVersion}.dep")
-        depFile.withWriter { writer ->
-            classpath.findAll { it.name.endsWith('.jar') }.sort {
-                !it.name.endsWith("grain-${project.grainVersion}.jar")
-            }.each {
-                writer.append(it.toString()).append('\n')
-            }
-        }
-    }
-}
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '1.8'
 }
 
 idea {
@@ -119,8 +109,8 @@ task preview(type: JavaExec) {
 
 task copyBootstrap {
     inputs.file 'bower.json'
-    inputs.dir 'bower_components/bootstrap'
-    inputs.dir 'bower_components/bootstrap-sass-official'
+    inputs.dir "${bowerComponentsDir}/bootstrap"
+    inputs.dir "${bowerComponentsDir}/bootstrap-sass-official"
 
     outputs.dir 'theme/fonts/vendor/bootstrap'
     outputs.dir 'theme/javascripts/vendor/jquery'
@@ -137,7 +127,7 @@ task copyBootstrap {
             into 'theme/javascripts/vendor/jquery'
         }
         copy {
-            from "${bowerComponentsDir}/bootstrap/dist/js"
+            from "${bowerComponentsDir}/bootstrap/js"
             into 'theme/javascripts/vendor/bootstrap'
         }
         copy {
@@ -149,7 +139,7 @@ task copyBootstrap {
 
 task copyFontawesome {
     inputs.file 'bower.json'
-    inputs.dir 'bower_components/fontawesome'
+    inputs.dir "${bowerComponentsDir}/fontawesome"
 
     outputs.dir 'theme/fonts/vendor/fontawesome'
     outputs.dir 'theme/sass/vendor/fontawesome'

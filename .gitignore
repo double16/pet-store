@@ -13,3 +13,4 @@ bower_components
 .asscache
 .sass-cache
 
+/grails-app/assets/vendor/
