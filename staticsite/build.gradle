@@ -34,12 +34,13 @@ defaultTasks 'preview'
 ext {
     mainClassName = [project.group, 'Main'].join('.')
     compatibilityVersion = JavaVersion.VERSION_1_8
-    bowerComponentsDir = 'src/assets/vendor'
+    assetsVendorDir = clientDependencies.installDir
 }
 
 sourceCompatibility = compatibilityVersion
 targetCompatibility = compatibilityVersion
 
+clean.dependsOn clientClean
 clean.delete << file('.cache')
 clean.delete << file('target')
 clean.delete << file('theme/fonts/vendor')
@@ -66,10 +67,12 @@ dependencies {
 }
 
 clientDependencies {
-    bower {
-        "bootstrap"("3.3.6")
-        "bootstrap-sass-official"("3.3.6")
-        "fontawesome"("4.5.0")
+    fileExtensions 'scss'
+    npm {
+        'bootstrap'('3.3.7')
+        'bootstrap-sass'('3.3.7')
+        'font-awesome'('4.7.0')
+        'jquery'('3.1.1')
     }
 }
 
@@ -108,49 +111,50 @@ task preview(type: JavaExec) {
 }
 
 task copyBootstrap {
-    inputs.file 'bower.json'
-    inputs.dir "${bowerComponentsDir}/bootstrap"
-    inputs.dir "${bowerComponentsDir}/bootstrap-sass-official"
+    dependsOn clientInstall
 
-    outputs.dir 'theme/fonts/vendor/bootstrap'
-    outputs.dir 'theme/javascripts/vendor/jquery'
-    outputs.dir 'theme/javascripts/vendor/bootstrap'
-    outputs.dir 'theme/sass/vendor/bootstrap'
+    inputs.dir "${assetsVendorDir}/bootstrap"
+    inputs.dir "${assetsVendorDir}/bootstrap-sass"
+
+    outputs.dir 'theme/fonts/vendor'
+    outputs.dir 'theme/javascripts/vendor'
+    outputs.dir 'theme/sass/vendor'
 
     doLast {
         copy {
-            from "${bowerComponentsDir}/bootstrap-sass-official/assets/fonts"
+            from "${assetsVendorDir}/bootstrap-sass/assets/fonts"
             into 'theme/fonts/vendor'
         }
         copy {
-            from "${bowerComponentsDir}/jquery/dist"
-            into 'theme/javascripts/vendor/jquery'
+            from "${assetsVendorDir}/jquery/jquery.js"
+            into 'theme/javascripts/vendor/jquery/'
         }
         copy {
-            from "${bowerComponentsDir}/bootstrap/js"
-            into 'theme/javascripts/vendor/bootstrap'
+            from "${assetsVendorDir}/bootstrap/js/bootstrap.js"
+            into 'theme/javascripts/vendor/bootstrap/'
         }
         copy {
-            from "${bowerComponentsDir}/bootstrap-sass-official/assets/stylesheets"
+            from "${assetsVendorDir}/bootstrap-sass/assets/stylesheets"
             into 'theme/sass/vendor/bootstrap'
         }
     }
 }
 
 task copyFontawesome {
-    inputs.file 'bower.json'
-    inputs.dir "${bowerComponentsDir}/fontawesome"
+    dependsOn clientInstall
+
+    inputs.dir "${assetsVendorDir}/font-awesome"
 
     outputs.dir 'theme/fonts/vendor/fontawesome'
     outputs.dir 'theme/sass/vendor/fontawesome'
 
     doLast {
         copy {
-            from "${bowerComponentsDir}/fontawesome/fonts"
+            from "${assetsVendorDir}/font-awesome/fonts"
             into 'theme/fonts/vendor/fontawesome'
         }
         copy {
-            from "${bowerComponentsDir}/fontawesome/scss"
+            from "${assetsVendorDir}/font-awesome/scss"
             into 'theme/sass/vendor/fontawesome'
             rename 'font-awesome.scss', '_fontawesome.scss'
         }

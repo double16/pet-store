@@ -184,7 +184,7 @@ allprojects {
         }
     }
 
-    gradleLint.rules = ['all-dependency','depenency-parenthesis','depenency-tuple']
+    gradleLint.rules = ['all-dependency','dependency-parenthesis','dependency-tuple']
     autoLintGradle.onlyIf { false }
 }
 
