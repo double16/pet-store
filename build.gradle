@@ -65,6 +65,7 @@ ext {
     new File(cacheDir).mkdirs()
 
     commit = System.getenv("COMMIT_HASH") ?: "git rev-parse HEAD".execute().text.trim()
+    applicationFile = new File(war.archivePath.parentFile, war.archivePath.name.replace('.war', '-app.war'))
 }
 
 bootRun {
@@ -192,6 +193,13 @@ task wrapper(type: Wrapper) {
     gradleVersion = gradleWrapperVersion
 }
 
+// Using a different output file allows incremental build, 'classifier' property doesn't work
+bootRepackage {
+    inputs.file(war.archivePath)
+    outputs.file(applicationFile)
+    setOutputFile(applicationFile)
+}
+
 /**
  * Uploading a source tarball with the compiled jar and an empty maven build to make the Java buildpack happy
  */
@@ -224,7 +232,7 @@ task herokuSources(type: Tar, dependsOn: [emptyPom, bootRepackage]) {
     from 'system.properties'
     from 'build/pom.xml'
     into('src/main/dist') {
-       from war.archivePath
+       from applicationFile
     }
 }
 
@@ -491,12 +499,6 @@ task dockerCheck {
 /**
  * End of 'check' container tasks.
  */
-
-task dockerClean(type: Exec) {
-    group = "staging"
-    description = "Stop and remove all docker containers"
-    commandLine '/bin/sh','-c','docker ps -qa | xargs docker rm -f; docker volume ls -q | xargs docker volume rm; docker images | grep \'<none>\' | tr -s [:space:] | cut -d " " -f 3 | xargs docker rmi'
-}
 
 /**
  * Static site container.
