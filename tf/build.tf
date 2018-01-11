@@ -36,7 +36,17 @@ resource "aws_iam_policy" "codebuild_policy" {
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ]
-    }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+          "s3:PutObject",
+          "s3:GetObject"
+      ],
+      "Resource": [
+          "arn:aws:s3:::codebuild-pet-store/*"
+      ]
+     }
   ]
 }
 POLICY
@@ -56,7 +66,10 @@ resource "aws_codebuild_project" "foo" {
   service_role = "${aws_iam_role.codebuild_role.arn}"
 
   artifacts {
-    type = "NO_ARTIFACTS"
+    type = "S3"
+    location = "codebuild-pet-store"
+    namespace_type = "BUILD_ID"
+    path = "artifacts"
   }
 
   environment {
@@ -79,6 +92,16 @@ resource "aws_codebuild_project" "foo" {
     type = "GITHUB"
     location = "https://github.com/double16/pet-store.git"
   }
+
+  tags {
+    "Application" = "pet-store"
+    "Environment" = "${terraform.workspace}"
+  }
+}
+
+resource "aws_s3_bucket" "codebuild_bucket" {
+  bucket = "codebuild-pet-store"
+  acl    = "private"
 
   tags {
     "Application" = "pet-store"
