@@ -12,5 +12,5 @@ setenv.sh
 bower_components
 .asscache
 .sass-cache
-
+.terraform/
 /grails-app/assets/vendor/

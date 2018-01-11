@@ -1,0 +1,11 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - ./gradlew check
+      - ./gradlew assemble
+artifacts:
+  files:
+    - build/libs/pet-store-*-app.war
+  discard-paths: yes
