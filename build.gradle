@@ -1,9 +1,14 @@
+import com.bmuschko.gradle.docker.tasks.container.DockerCopyFileFromContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerWaitContainer
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+import com.bmuschko.gradle.docker.tasks.image.Dockerfile
 import groovyx.net.http.RESTClient
-import org.apache.http.impl.client.DefaultHttpClient
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.FileEntity
-import com.bmuschko.gradle.docker.tasks.image.*
-import com.bmuschko.gradle.docker.tasks.container.*
+import org.apache.http.impl.client.DefaultHttpClient
 
 buildscript {
     ext {
@@ -18,19 +23,28 @@ buildscript {
     }
     dependencies {
         classpath "org.grails:grails-gradle-plugin:$grailsVersion"
-        classpath 'com.bertramlabs.plugins:asset-pipeline-gradle:2.1.1'
+        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:2.14.3"
+        classpath "org.grails.plugins:hibernate5:${gormVersion-".RELEASE"}"
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
-        classpath 'com.moowork.gradle:gradle-node-plugin:0.10'
         classpath 'com.bmuschko:gradle-docker-plugin:2.6.7'
-        classpath 'com.netflix.nebula:gradle-lint-plugin:7.3.5'
-        classpath 'com.github.ben-manes:gradle-versions-plugin:0.14.0'
+        classpath 'com.netflix.nebula:gradle-lint-plugin:7.9.2'
+        classpath 'com.github.ben-manes:gradle-versions-plugin:0.15.0'
     }
 }
 
 plugins {
-    id 'com.gradle.build-scan' version '1.0'
-    id 'io.spring.dependency-management' version '0.4.0.RELEASE'
+    id 'com.gradle.build-scan' version '1.8'
+    id 'com.craigburke.client-dependencies' version '1.4.0'
 }
+
+apply plugin:"eclipse"
+apply plugin:"idea"
+apply plugin:"war"
+apply plugin:"org.grails.grails-web"
+apply plugin:"org.grails.grails-gsp"
+apply plugin:"asset-pipeline"
+apply plugin: "com.bmuschko.docker-remote-api"
+apply plugin: 'nebula.lint'
 
 allprojects {
     apply plugin: 'com.github.ben-manes.versions'
@@ -38,19 +52,6 @@ allprojects {
 
 version "0.1"
 group "pet.store"
-
-apply plugin: "spring-boot"
-apply plugin: "war"
-apply plugin: "asset-pipeline"
-apply plugin: 'eclipse'
-apply plugin: 'idea'
-apply plugin: "org.grails.grails-web"
-apply plugin: "org.grails.grails-gsp"
-apply plugin: "com.moowork.node"
-apply plugin: "com.bmuschko.docker-remote-api"
-apply plugin: 'nebula.lint'
-
-gradleLint.rules = ['all-dependency','depenency-parenthesis','depenency-tuple']
 
 buildScan {
     licenseAgreementUrl = 'https://gradle.com/terms-of-service'
@@ -66,15 +67,14 @@ ext {
     commit = System.getenv("COMMIT_HASH") ?: "git rev-parse HEAD".execute().text.trim()
 }
 
+bootRun {
+    jvmArgs('-Dspring.output.ansi.enabled=always')
+    addResources = true
+}
+
 assets {
     minifyJs = true
     minifyCss = true
-}
-
-node {
-    version = '4.4.5'
-    npmVersion = '2.15.5'
-    download = true
 }
 
 /** Use the typical docker-machine environment variables to configure docker. */
@@ -100,35 +100,92 @@ repositories {
     maven { url "https://repo.grails.org/grails/core" }
 }
 
-dependencyManagement {
-    imports {
-        mavenBom "org.grails:grails-bom:$grailsVersion"
-    }
-    applyMavenExclusions false
-}
-
 dependencies {
-    compile "org.springframework.boot:spring-boot-starter-logging"
-    compile "org.springframework.boot:spring-boot-starter-actuator"
+    compile 'org.codehaus.groovy:groovy-all:2.4.10'
+    compile 'org.grails:grails-plugin-rest:3.2.10'
+    compile 'org.springframework:spring-tx:4.3.7.RELEASE'
+    compile 'io.projectreactor:reactor-core:2.0.8.RELEASE'
+    compile 'org.apache.tomcat.embed:tomcat-embed-core:8.5.13'
+    compile 'org.grails:grails-web-sitemesh:3.2.10'
+    compile 'org.grails:grails-bootstrap:3.2.10'
+    compile 'org.springframework:spring-beans:4.3.7.RELEASE'
+    compile 'org.springframework.boot:spring-boot:1.4.6.RELEASE'
+    compile 'org.springframework:spring-context:4.3.7.RELEASE'
+    compile 'org.grails:grails-web-url-mappings:3.2.10'
+    compile 'org.grails:grails-plugin-mimetypes:3.2.10'
+    compile 'org.springframework:spring-webmvc:4.3.7.RELEASE'
+    compile 'org.grails:grails-web-databinding:3.2.10'
+    compile 'org.grails:grails-databinding:3.2.10'
+    compile 'org.grails:grails-datastore-core:6.0.10.RELEASE'
+    compile 'org.grails:grails-web-common:3.2.10'
+    compile 'org.grails:grails-plugin-async:3.2.10'
+    compile 'org.grails:grails-web-taglib:3.2.10'
+    compile 'org.grails:grails-datastore-gorm:6.0.10.RELEASE'
+    compile 'org.grails:grails-taglib:3.2.10'
+    compile 'io.projectreactor:reactor-bus:2.0.8.RELEASE'
+    compile 'org.codehaus.groovy:groovy:2.4.10'
+    compile 'org.grails:grails-plugin-events:3.2.10'
+    compile 'org.grails:grails-web-mvc:3.2.10'
+    compile 'org.slf4j:slf4j-api:1.7.25'
+    compile 'org.grails:grails-plugin-converters:3.2.10'
+    compile 'org.grails:grails-plugin-controllers:3.2.10'
+    compile 'org.springframework:spring-web:4.3.7.RELEASE'
+    compile 'org.grails:grails-plugin-domain-class:3.2.10'
+    testCompile 'org.grails:grails-datastore-simple:6.0.10.RELEASE'
+    testCompile 'org.springframework:spring-test:4.3.7.RELEASE'
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.grails:grails-test:3.2.10'
     compile "org.springframework.boot:spring-boot-autoconfigure"
-    compile "org.springframework.boot:spring-boot-starter-tomcat"
+    compile "org.grails:grails-core"
     compile "org.grails:grails-dependencies"
     compile "org.grails:grails-web-boot"
-
-    compile "org.grails.plugins:hibernate"
-    compile "org.grails.plugins:cache"
-    compile "org.hibernate:hibernate-ehcache"
-
-    runtime "org.grails.plugins:asset-pipeline"
+    runtime 'org.hibernate:hibernate-ehcache:5.1.3.Final'
+    console "org.grails:grails-console"
+    profile "org.grails.profiles:web"
+    runtime "com.bertramlabs.plugins:asset-pipeline-grails:2.14.3"
     runtime "org.grails.plugins:scaffolding"
-
+    runtime "org.grails.plugins:cache"
+    runtime "com.h2database:h2"
     testCompile "org.grails:grails-plugin-testing"
-    testCompile "org.grails.plugins:geb"
 
     // Note: It is recommended to update to a more robust driver (Chrome, Firefox etc.)
-    testRuntime 'org.seleniumhq.selenium:selenium-htmlunit-driver:2.44.0'
+    testRuntime "org.seleniumhq.selenium:selenium-htmlunit-driver:2.52.0"
+    testRuntime "net.sourceforge.htmlunit:htmlunit:2.27"
 
     console "org.grails:grails-console"
+}
+
+clientDependencies {
+    yarn {
+        'jquery'('~2.1.0')
+        "angular"("~1.3.15")
+        "angular-route"("~1.3.15")
+        "angular-loader"("~1.3.15")
+        "angular-animate"("~1.3.15")
+        "angular-cookies"("~1.3.15")
+        "angular-resource"("~1.3.15")
+        "angular-sanitize"("~1.3.15")
+        "angular-touch"("~1.3.15")
+        "angular-mocks"("~1.3.15")
+        "animate.css"("3.x")
+    }
+}
+
+allprojects {
+    dependencyUpdates.resolutionStrategy = {
+        componentSelection { rules ->
+            rules.all { ComponentSelection selection ->
+                if (['.M', '.RC', 'beta', 'alpha', '-rc'].find {
+                    selection.candidate.version.toLowerCase().contains(it.toLowerCase())
+                }) {
+                    selection.reject('unreleased')
+                }
+            }
+        }
+    }
+
+    gradleLint.rules = ['all-dependency','dependency-parenthesis','dependency-tuple']
+    autoLintGradle.onlyIf { false }
 }
 
 task wrapper(type: Wrapper) {
@@ -201,61 +258,8 @@ task deployToHeroku(dependsOn: herokuSources) {
     onlyIf { System.getenv('HEROKU_AUTH_TOKEN') && System.getenv('HEROKU_APP_NAME') }
 }
 
-task npmCacheConfig(type: NpmTask) {
-    description = "Configure the NPM cache"
-    def npmCacheDir = "${cacheDir}/caches/npm"
-    outputs.files file(npmCacheDir)
-    args = [ 'config', 'set', 'cache', npmCacheDir ]
-}
-
-task npmPackages(type: NpmTask, dependsOn: npmCacheConfig) {
-    description = "Install Node.js packages"
-    args = [ 'install' ]
-    inputs.files file('package.json')
-    outputs.files file('node_modules')
-}
-
-task bowerInstall(type: NodeTask) {
-    script = file('node_modules/.bin/bower')
-    args = ["--config.storage.cache=${cacheDir}/caches/bower/cache",
-            "--config.storage.packages=${cacheDir}/caches/bower/packages",
-            "--config.storage.registry=${cacheDir}/caches/bower/registry",
-            'install']
-    inputs.files file('bower.json')
-    outputs.files file('bower_components')
-    dependsOn npmPackages
-}
-
-task bowerSyncJavascript(type: Sync) {
-    from 'bower_components'
-    into "grails-app/assets/javascripts/bower_components"
-    exclude '**/*.min.js'
-    exclude '**/angular*/index.js'
-    exclude '**/angular*/ng*.js'
-    include 'jquery/dist/jquery.js'
-    include 'angular*/**/*.js'
-    dependsOn bowerInstall
-}
-
-task bowerSyncStylesheets(type: Sync) {
-    from 'bower_components'
-    into "grails-app/assets/stylesheets/bower_components"
-    include 'angular*/**/*.css'
-    include 'animate.css/animate.css'
-    dependsOn bowerInstall
-}
-
-task bowerPackages() {
-    dependsOn bowerSyncJavascript, bowerSyncStylesheets
-}
-
-processResources.dependsOn bowerPackages
-assetCompile.dependsOn bowerPackages
-
-clean.delete << file('grails-app/assets/javascripts/bower_components')
-clean.delete << file('grails-app/assets/stylesheets/bower_components')
-clean.delete << file('node_modules')
-clean.delete << file('bower_components')
+processResources.dependsOn clientInstall
+assetCompile.dependsOn clientInstall
 
 build.dependsOn ':staticsite:generate'
 
@@ -265,15 +269,17 @@ build.dependsOn ':staticsite:generate'
  */
 
 /** Download all dependencies, this will be run in a container to cache the dependencies. */
-task primeCache << {
-  project.rootProject.allprojects.each { subProject ->
-    subProject.buildscript.configurations.each { configuration ->
-      configuration.resolve()
+task primeCache {
+    doLast {
+        project.rootProject.allprojects.each { subProject ->
+            subProject.buildscript.configurations.each { configuration ->
+                configuration.resolve()
+            }
+            subProject.configurations.each { configuration ->
+                configuration.resolve()
+            }
+        }
     }
-    subProject.configurations.each { configuration ->
-      configuration.resolve()
-    }
-  }
 }
 
 /** The `dockerOutput` directory holds all build outputs from the containers. */
@@ -371,9 +377,7 @@ task dockerBaseDockerfile(type: Dockerfile) {
   if (new File(destFile.parentFile, ".npmrc").file) {
       copyFile '.npmrc', '${HOME}/'
   }
-  runCommand './gradlew -is nodeSetup'
-  runCommand './gradlew -is npmPackages'
-  runCommand './gradlew -is bowerInstall'
+  runCommand './gradlew -is clientInstall'
   runCommand './gradlew -is primeCache'
   runCommand 'mv /prime/node_modules /cache'
   runCommand 'mv /prime/bower_components /cache'
@@ -415,8 +419,6 @@ task dockerAppDockerfile(type: Dockerfile) {
   environmentVariable 'COMMIT_HASH', commit
   user 'root'
   workingDir '/app'
-  runCommand '[ -d /cache/node_modules ] && cp -a /cache/node_modules /app || true'
-  runCommand '[ -d /cache/bower_components ] && cp -a /cache/bower_components /app || true'
   copyFile '.', '/app/'
   runCommand 'chown -R r /app'
   user 'r'
