@@ -59,7 +59,7 @@ resource "aws_iam_policy_attachment" "codebuild_policy_attachment" {
     "${aws_iam_role.codebuild_role.id}"]
 }
 
-resource "aws_codebuild_project" "foo" {
+resource "aws_codebuild_project" "codebuild_project" {
   name = "pet-store"
   description = "Pet Store example Grails project"
   build_timeout = "20"
