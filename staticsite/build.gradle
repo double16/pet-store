@@ -34,7 +34,7 @@ defaultTasks 'preview'
 ext {
     mainClassName = [project.group, 'Main'].join('.')
     compatibilityVersion = JavaVersion.VERSION_1_8
-    assetsVendorDir = clientDependencies.installDir
+    assetsVendorDir = 'src/assets/vendor'
 }
 
 sourceCompatibility = compatibilityVersion
@@ -67,6 +67,7 @@ dependencies {
 }
 
 clientDependencies {
+    installDir assetsVendorDir
     fileExtensions 'scss'
     npm {
         'bootstrap'('3.3.7')
@@ -115,6 +116,7 @@ task copyBootstrap {
 
     inputs.dir "${assetsVendorDir}/bootstrap"
     inputs.dir "${assetsVendorDir}/bootstrap-sass"
+    inputs.dir "${assetsVendorDir}/jquery"
 
     outputs.dir 'theme/fonts/vendor'
     outputs.dir 'theme/javascripts/vendor'

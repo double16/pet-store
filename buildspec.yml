@@ -9,3 +9,10 @@ artifacts:
   files:
     - build/libs/pet-store-*-app.war
   discard-paths: yes
+cache:
+  paths:
+    - /root/.gradle/native/**/*
+    - /root/.gradle/caches/**/*
+    - /root/.gradle/nodejs/**/*
+    - /root/.gradle/wrapper/**/*
+    - /root/.grain/packages/**/*
