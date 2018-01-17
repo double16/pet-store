@@ -82,16 +82,7 @@ assets {
 /** Use the typical docker-machine environment variables to configure docker. */
 ext {
     dockerHost = null
-    if (!System.getenv('DOCKER_REGISTRY_URL')) {
-        repository = ''
-    } else {
-        URL urlObj = new URL(System.getenv('DOCKER_REGISTRY_URL'))
-        if (urlObj.port > 0) {
-            repository = "${urlObj.host}:${urlObj.port}"
-        } else {
-            repository = urlObj.host
-        }
-    }
+    repository = System.getenv('DOCKER_REGISTRY_URL') ?: 'pet-store-app'
 }
 docker {
     if (System.getenv('DOCKER_TLS_VERIFY') == '1' && System.getenv('DOCKER_CERT_PATH')) {
@@ -355,7 +346,7 @@ task webappImage(type: DockerBuildImage) {
     inputs.file applicationFile
     dockerFile = webappDockerfile.destFile
     inputDir = dockerFile.parentFile
-    tag = "${repository ? repository+'/':''}petstore:${shortCommit ?: 'latest'}"
+    tag = "${repository}:${shortCommit ?: 'latest'}"
 }
 
 task webappImagePublish(type: DockerPushImage) {
@@ -389,7 +380,7 @@ task staticImage(type: DockerBuildImage) {
   dependsOn staticDockerfile
   dockerFile = staticDockerfile.destFile
   inputDir = staticDockerfile.destFile.parentFile
-  tag = "${repository ? repository+'/':''}pet-store-site:${shortCommit ?: 'latest'}"
+  tag = "${repository}-site:${shortCommit ?: 'latest'}"
 }
 
 task staticSiteCreate(type: DockerCreateContainer) {

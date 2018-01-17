@@ -122,3 +122,27 @@ resource "aws_s3_bucket" "static_content" {
 resource "aws_ecr_repository" "app_repo" {
   name = "pet-store-app"
 }
+
+resource "aws_ecr_lifecycle_policy" "app_repo_policy" {
+  repository = "${aws_ecr_repository.app_repo.name}"
+
+  policy = <<EOF
+{
+    "rules": [
+        {
+            "rulePriority": 1,
+            "description": "Expire images older than 14 days",
+            "selection": {
+                "tagStatus": "untagged",
+                "countType": "sinceImagePushed",
+                "countUnit": "days",
+                "countNumber": 14
+            },
+            "action": {
+                "type": "expire"
+            }
+        }
+    ]
+}
+EOF
+}
