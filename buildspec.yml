@@ -5,6 +5,7 @@ phases:
     commands:
       - ./gradlew check
       - ./gradlew assemble
+      - ./gradlew webappImagePublish
 artifacts:
   files:
     - build/libs/pet-store-*-app.war

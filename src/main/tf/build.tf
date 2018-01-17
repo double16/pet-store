@@ -78,13 +78,13 @@ resource "aws_codebuild_project" "codebuild_project" {
     type = "LINUX_CONTAINER"
 
     environment_variable {
-      "name" = "SOME_KEY1"
-      "value" = "SOME_VALUE1"
+      "name" = "DOCKER_REGISTRY_URL"
+      "value" = "${aws_ecr_repository.app_repo.repository_url}"
     }
 
     environment_variable {
-      "name" = "SOME_KEY2"
-      "value" = "SOME_VALUE2"
+      "name" = "STATIC_BUCKET"
+      "value" = "${aws_s3_bucket.static_content.bucket}"
     }
   }
 
@@ -107,4 +107,18 @@ resource "aws_s3_bucket" "codebuild_bucket" {
     "Application" = "pet-store"
     "Environment" = "${terraform.workspace}"
   }
+}
+
+resource "aws_s3_bucket" "static_content" {
+  bucket = "pet-store-static_content-${terraform.workspace}"
+  acl    = "private"
+
+  tags {
+    "Application" = "pet-store"
+    "Environment" = "${terraform.workspace}"
+  }
+}
+
+resource "aws_ecr_repository" "app_repo" {
+  name = "pet-store-app"
 }

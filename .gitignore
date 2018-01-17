@@ -13,4 +13,5 @@ bower_components
 .asscache
 .sass-cache
 .terraform/
+*.tfstate*
 /grails-app/assets/vendor/
