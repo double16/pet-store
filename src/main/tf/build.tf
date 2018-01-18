@@ -44,8 +44,26 @@ resource "aws_iam_policy" "codebuild_policy" {
           "s3:GetObject"
       ],
       "Resource": [
-          "arn:aws:s3:::codebuild-pet-store/*"
+          "${aws_s3_bucket.codebuild_bucket.arn}/*"
       ]
+     },
+     {
+      "Action": [
+          "ecr:GetAuthorizationToken"
+      ],
+      "Resource": "*",
+      "Effect": "Allow"
+     },
+     {
+      "Action": [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:CompleteLayerUpload",
+          "ecr:InitiateLayerUpload",
+          "ecr:PutImage",
+          "ecr:UploadLayerPart"
+      ],
+      "Resource": "${aws_ecr_repository.app_repo.arn}",
+      "Effect": "Allow"
      }
   ]
 }
@@ -67,15 +85,22 @@ resource "aws_codebuild_project" "codebuild_project" {
 
   artifacts {
     type = "S3"
-    location = "codebuild-pet-store"
+    location = "${aws_s3_bucket.codebuild_bucket.bucket}"
     namespace_type = "BUILD_ID"
     path = "artifacts"
   }
 
+//  cache {
+//    type = "S3"
+//    location = "${aws_s3_bucket.codebuild_bucket.bucket}"
+//    path = "cache"
+//  }
+
   environment {
     compute_type = "BUILD_GENERAL1_SMALL"
-    image = "aws/codebuild/java:openjdk-8"
+    image = "827184202067.dkr.ecr.us-east-1.amazonaws.com/gradle-webapp-build-base:2018.01.1"
     type = "LINUX_CONTAINER"
+    privileged_mode = true
 
     environment_variable {
       "name" = "DOCKER_REGISTRY_URL"
@@ -91,6 +116,9 @@ resource "aws_codebuild_project" "codebuild_project" {
   source {
     type = "GITHUB"
     location = "https://github.com/double16/pet-store.git"
+    auth {
+      type = "OAUTH"
+    }
   }
 
   tags {
