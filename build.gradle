@@ -4,6 +4,7 @@ import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 import com.bmuschko.gradle.docker.tasks.image.DockerPushImage
 import com.bmuschko.gradle.docker.tasks.image.Dockerfile
+import groovy.json.JsonOutput
 import groovyx.net.http.RESTClient
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.FileEntity
@@ -79,7 +80,7 @@ assets {
     minifyCss = true
 }
 
-/** Use the typical docker-machine environment variables to configure docker. */
+/* Use the typical docker-machine environment variables to configure docker. */
 ext {
     dockerHost = null
     repository = System.getenv('DOCKER_REGISTRY_URL') ?: 'pet-store-app'
@@ -211,7 +212,7 @@ bootRepackage {
     setOutputFile(applicationFile)
 }
 
-/**
+/*
  * Uploading a source tarball with the compiled jar and an empty maven build to make the Java buildpack happy
  */
 task emptyPom {
@@ -282,12 +283,12 @@ assetCompile.dependsOn clientInstall
 
 build.dependsOn ':staticsite:generate'
 
-/**
+/*
  * Container based tasks follow. These tasks allow all build operations to be done in containers,
  * thus reducing the dependencies required on the build host to be Java and Docker.
  */
 
-/** The `dockerOutput` directory holds all build outputs from the containers. */
+/* The `dockerOutput` directory holds all build outputs from the containers. */
 ext {
   dockerOutput = "${project.buildDir}/docker/output"
 }
@@ -356,7 +357,7 @@ task webappImagePublish(type: DockerPushImage) {
     tag = shortCommit ?: 'latest'
 }
 
-/**
+/*
  * Static site container.
  */
 task staticContext(type: Sync) {
@@ -398,4 +399,28 @@ task staticSiteRemove(type: DockerRemoveContainer) {
   dependsOn staticSiteCreate
   targetContainerId { staticSiteCreate.getContainerId() }
   force = true
+}
+
+/*
+ * ECS Artifacts
+ */
+task ecsImageDefinitions {
+    group = "Deployment"
+    description = "Generate AWS ECS imagedefinitions.json file for AWS CodeDeploy"
+    doFirst {
+        def data = [
+                [
+                        name: 'pet-store',
+                        imageUri: webappImage.tag,
+                ],
+/*
+                [
+                        name: 'static-site',
+                        imageUri: staticImage.tag,
+                ]
+*/
+        ]
+
+        new File("${project.buildDir}/imagedefinitions.json").text = JsonOutput.toJson(data)
+    }
 }

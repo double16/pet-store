@@ -12,10 +12,11 @@ phases:
       - ./gradlew check
       - ./gradlew assemble
       - ./gradlew webappImagePublish
+      - ./gradlew ecsImageDefinitions
 
 artifacts:
   files:
-    - build/libs/*
+    - build/imagedefinitions.json
   discard-paths: yes
 
 cache:

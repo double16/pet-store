@@ -15,7 +15,7 @@ bower_components
 .terraform/
 *.tfstate*
 /grails-app/assets/vendor/
-bin/
+/bin/
 .classpath
 .project
 .settings
