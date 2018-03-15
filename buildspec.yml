@@ -15,7 +15,7 @@ phases:
 
 artifacts:
   files:
-    - build/libs/pet-store-*-app.war
+    - build/libs/*
   discard-paths: yes
 
 cache:
