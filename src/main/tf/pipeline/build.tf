@@ -1,5 +1,5 @@
 resource "aws_iam_role" "codebuild_role" {
-  name = "codebuild-role-pet-store"
+  name = "codebuild-role-${var.application_name}"
 
   assume_role_policy = <<EOF
 {
@@ -18,7 +18,7 @@ EOF
 }
 
 resource "aws_iam_policy" "codebuild_policy" {
-  name = "codebuild-policy-pet-store"
+  name = "codebuild-policy-${var.application_name}"
   path = "/service-role/"
   description = "Policy used in trust relationship with CodeBuild"
 
@@ -71,14 +71,15 @@ POLICY
 }
 
 resource "aws_iam_policy_attachment" "codebuild_policy_attachment" {
-  name = "codebuild-policy-attachment-pet-store"
+  name = "codebuild-policy-attachment-${var.application_name}"
   policy_arn = "${aws_iam_policy.codebuild_policy.arn}"
   roles = [
-    "${aws_iam_role.codebuild_role.id}"]
+    "${aws_iam_role.codebuild_role.id}"
+  ]
 }
 
 resource "aws_codebuild_project" "codebuild_project" {
-  name = "pet-store"
+  name = "${var.application_name}"
   description = "Pet Store example Grails project"
   build_timeout = "20"
   service_role = "${aws_iam_role.codebuild_role.arn}"
@@ -98,7 +99,7 @@ resource "aws_codebuild_project" "codebuild_project" {
 
   environment {
     compute_type = "BUILD_GENERAL1_SMALL"
-    image = "827184202067.dkr.ecr.us-east-1.amazonaws.com/gradle-webapp-build-base:2018.01.1"
+    image = "827184202067.dkr.ecr.us-east-1.amazonaws.com/gradle-webapp-build-base:2018.02.3"
     type = "LINUX_CONTAINER"
     privileged_mode = true
 
@@ -115,40 +116,40 @@ resource "aws_codebuild_project" "codebuild_project" {
 
   source {
     type = "GITHUB"
-    location = "https://github.com/double16/pet-store.git"
+    location = "https://github.com/double16/${var.application_name}.git"
     auth {
       type = "OAUTH"
     }
   }
 
   tags {
-    "Application" = "pet-store"
+    "Application" = "${var.application_name}"
     "Environment" = "${terraform.workspace}"
   }
 }
 
 resource "aws_s3_bucket" "codebuild_bucket" {
-  bucket = "codebuild-pet-store"
+  bucket = "codebuild-${var.application_name}"
   acl    = "private"
 
   tags {
-    "Application" = "pet-store"
+    "Application" = "${var.application_name}"
     "Environment" = "${terraform.workspace}"
   }
 }
 
 resource "aws_s3_bucket" "static_content" {
-  bucket = "pet-store-static_content-${terraform.workspace}"
+  bucket = "${var.application_name}-static-content-${terraform.workspace}"
   acl    = "private"
 
   tags {
-    "Application" = "pet-store"
+    "Application" = "${var.application_name}"
     "Environment" = "${terraform.workspace}"
   }
 }
 
 resource "aws_ecr_repository" "app_repo" {
-  name = "pet-store-app"
+  name = "${var.application_name}-app"
 }
 
 resource "aws_ecr_lifecycle_policy" "app_repo_policy" {
