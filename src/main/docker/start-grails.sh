@@ -4,7 +4,7 @@ JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenti
 
 DEBUG_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n"
 
-OPTS="${JMX_OPTS}"
+#OPTS="${JMX_OPTS}"
 [ "${DEBUG:-0}" -gt 0 ] && OPTS="${OPTS} ${DEBUG_OPTS}"
 
 EXECUTABLE="$(find /app -name '*.war' | head -n 1)"
