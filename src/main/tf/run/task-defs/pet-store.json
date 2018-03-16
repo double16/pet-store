@@ -1,0 +1,14 @@
+[
+  {
+    "name": "app",
+    "image": "alpine:3.7",
+    "command": [ "/usr/bin/nc -l -p 8080" ],
+    "essential": true,
+    "portMappings": [
+      {
+        "containerPort": 8080,
+        "hostPort": 8080
+      }
+    ]
+  }
+]
