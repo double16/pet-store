@@ -11,6 +11,13 @@ resource "aws_iam_role" "codebuild_role" {
         "Service": "codebuild.amazonaws.com"
       },
       "Action": "sts:AssumeRole"
+    },
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "codepipeline.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
     }
   ]
 }
@@ -46,6 +53,25 @@ resource "aws_iam_policy" "codebuild_policy" {
       "Resource": [
           "${aws_s3_bucket.codebuild_bucket.arn}/*"
       ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "codecommit:GetBranch",
+        "codecommit:GetCommit",
+        "codecommit:UploadArchive",
+        "codecommit:GetUploadArchiveStatus",
+        "codecommit:CancelUploadArchive"
+      ],
+      "Resource": "${aws_codecommit_repository.application.arn}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "codebuild:BatchGetBuilds",
+        "codebuild:StartBuild"
+      ],
+      "Resource": "*"
      },
      {
       "Action": [
@@ -64,6 +90,19 @@ resource "aws_iam_policy" "codebuild_policy" {
       ],
       "Resource": "${aws_ecr_repository.app_repo.arn}",
       "Effect": "Allow"
+     },
+     {
+      "Action": [
+        "ecs:DescribeServices",
+        "ecs:DescribeTaskDefinition",
+        "ecs:DescribeTasks",
+        "ecs:ListTasks",
+        "ecs:RegisterTaskDefinition",
+        "ecs:UpdateService",
+        "iam:PassRole"
+      ],
+      "Resource": "*",
+      "Effect": "Allow"
      }
   ]
 }
@@ -78,9 +117,20 @@ resource "aws_iam_policy_attachment" "codebuild_policy_attachment" {
   ]
 }
 
+resource "aws_iam_role_policy_attachment" "codebuild_policy_attachment_ecs_poweruser" {
+  role = "${aws_iam_role.codebuild_role.id}"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+resource "aws_codecommit_repository" "application" {
+  repository_name = "${var.application_name}"
+  description = "${var.application_description}"
+  default_branch = "master"
+}
+
 resource "aws_codebuild_project" "codebuild_project" {
   name = "${var.application_name}"
-  description = "Pet Store example Grails project"
+  description = "${var.application_description}"
   build_timeout = "20"
   service_role = "${aws_iam_role.codebuild_role.arn}"
 
@@ -115,11 +165,8 @@ resource "aws_codebuild_project" "codebuild_project" {
   }
 
   source {
-    type = "GITHUB"
-    location = "https://github.com/double16/${var.application_name}.git"
-    auth {
-      type = "OAUTH"
-    }
+    type = "CODECOMMIT"
+    location = "${aws_codecommit_repository.application.clone_url_http}"
   }
 
   tags {
@@ -174,4 +221,70 @@ resource "aws_ecr_lifecycle_policy" "app_repo_policy" {
     ]
 }
 EOF
+}
+
+resource "aws_codepipeline" "application" {
+  name     = "${var.application_name}-${terraform.workspace}"
+  role_arn = "${aws_iam_role.codebuild_role.arn}"
+
+  artifact_store {
+    location = "${aws_s3_bucket.codebuild_bucket.bucket}"
+    type     = "S3"
+  }
+
+  stage {
+    name = "Source"
+
+    action {
+      name             = "Source"
+      category         = "Source"
+      owner            = "AWS"
+      provider         = "CodeCommit"
+      version          = "1"
+      output_artifacts = ["source"]
+
+      configuration {
+        RepositoryName       = "${aws_codecommit_repository.application.repository_name}"
+        BranchName           = "codebuild"
+        PollForSourceChanges = "false"
+      }
+    }
+  }
+
+  stage {
+    name = "Build"
+
+    action {
+      name             = "Build"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "CodeBuild"
+      input_artifacts  = ["source"]
+      output_artifacts = ["build"]
+      version          = "1"
+
+      configuration {
+        ProjectName = "${aws_codebuild_project.codebuild_project.name}"
+      }
+    }
+  }
+
+  stage {
+    name = "Deploy"
+
+    action {
+      name             = "ECS"
+      category         = "Deploy"
+      owner            = "AWS"
+      provider         = "ECS"
+      input_artifacts  = ["build"]
+      version          = "1"
+
+      configuration {
+        ClusterName = "${var.application_name}-${terraform.workspace}"
+        ServiceName = "${var.application_name}"
+        FileName = "imagedefinitions.json"
+      }
+    }
+  }
 }
