@@ -122,6 +122,16 @@ resource "aws_iam_role_policy_attachment" "codebuild_policy_attachment_ecs_power
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
 }
 
+resource "aws_cloudwatch_log_group" "app" {
+  name = "/aws/codebuild/${var.application_name}"
+  retention_in_days = "30"
+
+  tags {
+    "Application" = "${var.application_name}"
+    "Environment" = "${terraform.workspace}"
+  }
+}
+
 resource "aws_codecommit_repository" "application" {
   repository_name = "${var.application_name}"
   description = "${var.application_description}"
@@ -287,4 +297,86 @@ resource "aws_codepipeline" "application" {
       }
     }
   }
+}
+
+resource "aws_cloudwatch_event_rule" "oncommit" {
+  name = "codepipeline-${var.application_name}-master"
+  description = "Amazon CloudWatch Events rule to automatically start your pipeline when a change occurs in the AWS CodeCommit source repository and branch."
+  role_arn = ""
+
+  event_pattern = <<PATTERN
+{
+  "source": [
+    "aws.codecommit"
+  ],
+  "detail-type": [
+    "CodeCommit Repository State Change"
+  ],
+  "resources": [
+    "${aws_codecommit_repository.application.arn}"
+  ],
+  "detail": {
+    "event": [
+      "referenceCreated",
+      "referenceUpdated"
+    ]
+  }
+}
+PATTERN
+}
+
+resource "aws_iam_role" "oncommit_role" {
+  name = "${var.application_name}-${terraform.workspace}-oncommit"
+  path = "/service-role/"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "events.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_policy" "oncommit_policy" {
+  name = "start-pipeline-execution-${var.application_name}-${terraform.workspace}"
+  path = "/service-role/"
+  description = "Policy used in trust relationship with CloudWatch"
+
+  policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "codepipeline:StartPipelineExecution"
+            ],
+            "Resource": [
+                "${aws_codepipeline.application.arn}"
+            ]
+        }
+    ]
+}
+POLICY
+}
+
+resource "aws_iam_policy_attachment" "oncommit_policy_attachment" {
+  name = "${var.application_name}-${terraform.workspace}-oncommit-policy-attachment"
+  policy_arn = "${aws_iam_policy.oncommit_policy.arn}"
+  roles = [
+    "${aws_iam_role.oncommit_role.id}"
+  ]
+}
+
+resource "aws_cloudwatch_event_target" "pipeline" {
+  rule      = "${aws_cloudwatch_event_rule.oncommit.name}"
+  arn       = "${aws_codepipeline.application.arn}"
+  role_arn  = "${aws_iam_role.oncommit_role.arn}"
 }

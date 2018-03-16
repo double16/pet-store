@@ -24,7 +24,7 @@ resource "aws_security_group" "web_internal" {
 }
 
 resource "aws_cloudwatch_log_group" "app" {
-  name = "/aws/codebuild/${var.application_name}"
+  name = "/ecs/${var.application_name}"
   retention_in_days = "30"
 
   tags {
