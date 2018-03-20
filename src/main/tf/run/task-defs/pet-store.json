@@ -29,7 +29,7 @@
     "memory": null,
     "memoryReservation": null,
     "volumesFrom": [],
-    "image": "827184202067.dkr.ecr.us-east-1.amazonaws.com/pet-store-app:latest",
+    "image": "${app_repository_url}:latest",
     "disableNetworking": null,
     "healthCheck": null,
     "essential": true,

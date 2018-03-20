@@ -20,11 +20,12 @@ resource "aws_codebuild_project" "codebuild_project" {
   build_timeout = "20"
   service_role = "${aws_iam_role.codebuild_role.arn}"
 
+  source {
+    type = "CODEPIPELINE"
+  }
+
   artifacts {
-    type = "S3"
-    location = "${aws_s3_bucket.codebuild_bucket.bucket}"
-    namespace_type = "BUILD_ID"
-    path = "artifacts"
+    type = "CODEPIPELINE"
   }
 
 //  cache {
@@ -48,11 +49,6 @@ resource "aws_codebuild_project" "codebuild_project" {
       "name" = "STATIC_BUCKET"
       "value" = "${aws_s3_bucket.static_content.bucket}"
     }
-  }
-
-  source {
-    type = "CODECOMMIT"
-    location = "${aws_codecommit_repository.application.clone_url_http}"
   }
 
   tags {
