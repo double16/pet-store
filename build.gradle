@@ -412,7 +412,7 @@ task testReportPublish(type: SyncTask) {
     dependsOn test
     bucketName System.getenv('ARTIFACT_BUCKET')
     source file("${project.buildDir}/reports")
-    prefix "artifacts/${System.getenv('CODEBUILD_BUILD_ID')}/reports"
+    prefix "artifacts/${System.getenv('CODEBUILD_BUILD_ID')}/reports/"
 }
 
 /*
