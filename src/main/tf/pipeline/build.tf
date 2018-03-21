@@ -69,7 +69,12 @@ resource "aws_s3_bucket" "codebuild_bucket" {
 
 resource "aws_s3_bucket" "static_content" {
   bucket = "${var.application_name}-static-content-${terraform.workspace}"
-  acl    = "private"
+  acl    = "public-read"
+
+  website {
+    index_document = "index.html"
+    error_document = "error.html"
+  }
 
   tags {
     "Application" = "${var.application_name}"

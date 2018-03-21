@@ -51,7 +51,8 @@ resource "aws_iam_policy" "codebuild_policy" {
           "s3:GetObject"
       ],
       "Resource": [
-          "${aws_s3_bucket.codebuild_bucket.arn}/*"
+          "${aws_s3_bucket.codebuild_bucket.arn}/*",
+          "${aws_s3_bucket.static_content.arn}/*"
       ]
     },
     {

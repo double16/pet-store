@@ -6,6 +6,7 @@ import com.bmuschko.gradle.docker.tasks.image.DockerPushImage
 import com.bmuschko.gradle.docker.tasks.image.Dockerfile
 import groovy.json.JsonOutput
 import groovyx.net.http.RESTClient
+import jp.classmethod.aws.gradle.s3.SyncTask
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.FileEntity
 import org.apache.http.impl.client.DefaultHttpClient
@@ -36,6 +37,7 @@ plugins {
     id 'com.gradle.build-scan' version '1.12.1'
     id 'com.craigburke.client-dependencies' version '1.4.0'
     id 'com.patdouble.awsecr' version '0.4.0'
+    id 'jp.classmethod.aws.s3' version '0.36'
 }
 
 apply plugin:"eclipse"
@@ -396,6 +398,12 @@ task staticSiteRemove(type: DockerRemoveContainer) {
   dependsOn staticSiteCreate
   targetContainerId { staticSiteCreate.getContainerId() }
   force = true
+}
+
+task staticSiteS3Publish(type: SyncTask) {
+    dependsOn ':staticsite:generate'
+    bucketName System.getenv('STATIC_BUCKET')
+    source project(':staticsite').file('target')
 }
 
 /*
