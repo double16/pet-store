@@ -30,6 +30,7 @@ buildscript {
         classpath 'com.bmuschko:gradle-docker-plugin:3.2.5'
         classpath 'com.netflix.nebula:gradle-lint-plugin:9.0.0'
         classpath 'com.github.ben-manes:gradle-versions-plugin:0.17.0'
+        classpath "jp.classmethod.aws:gradle-aws-plugin:0.36"
     }
 }
 
@@ -37,7 +38,6 @@ plugins {
     id 'com.gradle.build-scan' version '1.12.1'
     id 'com.craigburke.client-dependencies' version '1.4.0'
     id 'com.patdouble.awsecr' version '0.4.0'
-    id 'jp.classmethod.aws.s3' version '0.36'
 }
 
 apply plugin:"eclipse"
@@ -47,6 +47,7 @@ apply plugin:"org.grails.grails-web"
 apply plugin:"org.grails.grails-gsp"
 apply plugin:"asset-pipeline"
 apply plugin: "com.bmuschko.docker-remote-api"
+apply plugin: 'jp.classmethod.aws'
 apply plugin: 'nebula.lint'
 
 allprojects {
