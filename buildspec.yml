@@ -11,7 +11,7 @@ phases:
     commands:
       - ./gradlew check
       - ./gradlew assemble
-      - ./gradlew webappImagePublish ecsImageDefinitions staticSiteS3Publish
+      - ./gradlew webappImagePublish ecsImageDefinitions staticSiteS3Publish testReportPublish
 
 artifacts:
   files:

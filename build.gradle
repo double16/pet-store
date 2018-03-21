@@ -403,9 +403,16 @@ task staticSiteRemove(type: DockerRemoveContainer) {
 }
 
 task staticSiteS3Publish(type: SyncTask) {
-    dependsOn ':staticsite:generate'
+    dependsOn ':staticsite:generate', ':staticsite:htmlSanityCheck'
     bucketName System.getenv('STATIC_BUCKET')
     source project(':staticsite').file('target')
+}
+
+task testReportPublish(type: SyncTask) {
+    dependsOn test
+    bucketName System.getenv('ARTIFACT_BUCKET')
+    source file("${project.buildDir}/reports")
+    prefix "artifacts/${System.getenv('CODEBUILD_BUILD_ID')}/reports"
 }
 
 /*

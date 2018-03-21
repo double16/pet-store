@@ -49,6 +49,11 @@ resource "aws_codebuild_project" "codebuild_project" {
       "name" = "STATIC_BUCKET"
       "value" = "${aws_s3_bucket.static_content.bucket}"
     }
+
+    environment_variable {
+      "name" = "ARTIFACT_BUCKET"
+      "value" = "${aws_s3_bucket.codebuild_bucket.bucket}"
+    }
   }
 
   tags {

@@ -1,9 +1,0 @@
-{
-    "name": "grain-theme-bootstrap",
-    "version": "1.0.0",
-    "dependencies": {
-        "bootstrap": "3.3.6",
-        "bootstrap-sass-official": "3.3.6",
-        "fontawesome": "4.5.0"
-    }
-}
