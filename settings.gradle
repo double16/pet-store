@@ -1,2 +1,35 @@
+import ch.myniva.gradle.caching.s3.AwsS3BuildCache
+
+buildscript {
+    repositories {
+        mavenLocal()
+        maven {
+            url 'https://plugins.gradle.org/m2/'
+        }
+        maven {
+            url  "https://dl.bintray.com/double16/plugins"
+        }
+    }
+    dependencies {
+        classpath 'ch.myniva.gradle:s3-build-cache:0.5.1'
+    }
+}
+
+apply plugin: 'ch.myniva.s3-build-cache'
+
+if (System.getenv('ARTIFACT_BUCKET')) {
+    buildCache {
+        local {
+            enabled = false
+        }
+        remote(AwsS3BuildCache) {
+            region = 'us-east-1'
+            bucket = System.getenv('ARTIFACT_BUCKET')
+            path = "gradle"
+            push = true
+        }
+    }
+}
+
 include 'staticsite'
 

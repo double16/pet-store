@@ -1,11 +1,10 @@
 package org.petstore
 
-import grails.test.mixin.*
+import grails.testing.gorm.DomainUnitTest
+import grails.testing.web.controllers.ControllerUnitTest
 import spock.lang.*
 
-@TestFor(AnimalController)
-@Mock(Animal)
-class AnimalControllerSpec extends Specification {
+class AnimalControllerSpec extends Specification implements ControllerUnitTest<AnimalController>, DomainUnitTest<Animal> {
 
     def populateValidParams(params) {
         assert params != null
