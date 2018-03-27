@@ -17,7 +17,7 @@ resource "aws_codecommit_repository" "application" {
 resource "aws_codebuild_project" "codebuild_project" {
   name = "${var.application_name}"
   description = "${var.application_description}"
-  build_timeout = "20"
+  build_timeout = "40"
   service_role = "${aws_iam_role.codebuild_role.arn}"
 
   source {
