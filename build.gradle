@@ -21,8 +21,6 @@ buildscript {
           maven { url { System.getenv('MAVEN_REPO') } }
         }
         maven { url "https://repo.grails.org/grails/core" }
-        jcenter()
-        mavenCentral()
     }
     dependencies {
         classpath "org.grails:grails-gradle-plugin:$grailsVersion"
