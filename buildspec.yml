@@ -9,9 +9,7 @@ phases:
 
   build:
     commands:
-      - ./gradlew check
-      - ./gradlew assemble
-      - ./gradlew webappImagePublish ecsImageDefinitions staticSiteS3Publish testReportPublish
+      - ./gradlew check assemble webappImagePublish ecsImageDefinitions staticSiteS3Publish testReportPublish -s --scan
 
 artifacts:
   files:
