@@ -66,6 +66,25 @@ resource "aws_s3_bucket" "codebuild_bucket" {
   bucket = "codebuild-${var.application_name}"
   acl    = "private"
 
+  lifecycle_rule {
+    id      = "cache"
+    enabled = true
+    prefix  = "cache/"
+    expiration {
+      days = 30
+      expired_object_delete_marker = false
+    }
+  }
+
+  lifecycle_rule {
+    id      = "all"
+    enabled = true
+    expiration {
+      days = 30
+      expired_object_delete_marker = false
+    }
+  }
+
   tags {
     "Application" = "${var.application_name}"
     "Environment" = "${terraform.workspace}"

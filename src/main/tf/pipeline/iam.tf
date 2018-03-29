@@ -48,11 +48,14 @@ resource "aws_iam_policy" "codebuild_policy" {
       "Effect": "Allow",
       "Action": [
           "s3:PutObject",
-          "s3:GetObject"
+          "s3:GetObject",
+          "s3:ListBucket"
       ],
       "Resource": [
           "${aws_s3_bucket.codebuild_bucket.arn}/*",
-          "${aws_s3_bucket.static_content.arn}/*"
+          "${aws_s3_bucket.codebuild_bucket.arn}",
+          "${aws_s3_bucket.static_content.arn}/*",
+          "${aws_s3_bucket.static_content.arn}"
       ]
     },
     {
