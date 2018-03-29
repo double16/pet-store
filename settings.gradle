@@ -6,10 +6,9 @@ buildscript {
     repositories {
         mavenLocal()
         maven { url 'https://plugins.gradle.org/m2/' }
-        maven { url 'https://dl.bintray.com/double16/plugins' }
     }
     dependencies {
-        classpath 'ch.myniva.gradle:s3-build-cache:0.5.1'
+        classpath 'ch.myniva.gradle:s3-build-cache:0.6.0'
     }
 }
 
