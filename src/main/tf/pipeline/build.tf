@@ -28,11 +28,10 @@ resource "aws_codebuild_project" "codebuild_project" {
     type = "CODEPIPELINE"
   }
 
-//  cache {
-//    type = "S3"
-//    location = "${aws_s3_bucket.codebuild_bucket.bucket}"
-//    path = "cache"
-//  }
+  cache {
+    type = "S3"
+    location = "${aws_s3_bucket.codebuild_bucket.bucket}/cache"
+  }
 
   environment {
     compute_type = "BUILD_GENERAL1_SMALL"

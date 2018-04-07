@@ -1,7 +1,7 @@
 provider "aws" {
   region = "${var.region}"
   profile = "${var.application_name}_deployer"
-  version = "~> 1.11"
+  version = "~> 1.14"
 }
 
 data "aws_region" "current" {}
