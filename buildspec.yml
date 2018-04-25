@@ -4,8 +4,8 @@ phases:
 
   install:
     commands:
-      - mkdir -p build
-      - nohup collectl --ALL -f build/ci-collectl.log &
+      - mkdir -p build/collectl
+      - nohup collectl --ALL -f build/collectl/ci-collectl &
       - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://0.0.0.0:2375 --storage-driver=overlay >/var/log/docker.log &
       - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
 
@@ -20,7 +20,7 @@ phases:
 artifacts:
   files:
     - build/imagedefinitions.json
-    - build/ci-collectl.log
+    - build/collectl/**/*
   discard-paths: yes
 
 cache:
