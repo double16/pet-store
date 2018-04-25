@@ -15,7 +15,8 @@ phases:
 
   post_build:
     commands:
-      - pkill collectl
+      - pkill collectl ; sleep 3s
+      - aws s3 sync build/collectl/ s3://${ARTIFACT_BUCKET}/artifacts/${CODEBUILD_BUILD_ID}/collectl/
 
 artifacts:
   files:
