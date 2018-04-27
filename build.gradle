@@ -62,9 +62,6 @@ allprojects {
 
 configure(project(':terraform').subprojects) {
     apply plugin: 'dk.danskespil.gradle.plugins.terraform'
-    [tasks.tfGet, tasks.tfPlan, tasks.tfValidate].each {
-        it.inputs.files fileTree("${projectDir}/modules")
-    }
 }
 
 version "0.1"
