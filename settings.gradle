@@ -29,4 +29,6 @@ if (System.getenv('ARTIFACT_BUCKET')) {
 }
 
 include 'staticsite'
+include 'terraform', 'terraform:bootstrap'
 
+includeBuild "${System.properties['user.home']}/Workspace/gradle-plugin-terraform"

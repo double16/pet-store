@@ -8,7 +8,7 @@ terraform {
     # forcing the region for the state bucket because we only want one
     region = "us-east-1"
     encrypt = true
-    dynamodb_table = "pet-store-state-lock"
+    dynamodb_table = "terraform-state-lock"
   }
 }
 
@@ -39,9 +39,9 @@ resource "aws_s3_bucket" "state" {
 }
 
 resource "aws_dynamodb_table" "state-lock-table" {
-  name  = "pet-store-state-lock"
-  read_capacity  = 20
-  write_capacity = 20
+  name  = "terraform-state-lock"
+  read_capacity  = 5
+  write_capacity = 5
   hash_key = "LockID"
   attribute {
     name = "LockID"
@@ -49,7 +49,7 @@ resource "aws_dynamodb_table" "state-lock-table" {
   }
 
   tags {
-    "Application" = "${var.application_name}"
+    "Application" = "Terraform"
     "Environment" = "${terraform.workspace}"
   }
 }

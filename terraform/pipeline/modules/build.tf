@@ -35,7 +35,7 @@ resource "aws_codebuild_project" "codebuild_project" {
 
   environment {
     compute_type = "BUILD_GENERAL1_SMALL"
-    image = "827184202067.dkr.ecr.us-east-1.amazonaws.com/gradle-webapp-build-base:2018.02.3"
+    image = "827184202067.dkr.ecr.us-east-1.amazonaws.com/gradle-webapp-build-base:2018.04.2"
     type = "LINUX_CONTAINER"
     privileged_mode = true
 

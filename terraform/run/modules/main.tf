@@ -1,7 +1,7 @@
 provider "aws" {
   region = "${var.region}"
   profile = "${var.application_name}_deployer"
-  version = "~> 1.11"
+  version = "~> 1.15"
 }
 
 data "aws_region" "current" {}
@@ -17,7 +17,7 @@ data "terraform_remote_state" "network" {
     key = "network"
     region = "us-east-1"
     encrypt = true
-    dynamodb_table = "pet-store-state-lock"
+    dynamodb_table = "terraform-state-lock"
   }
 }
 
@@ -30,6 +30,6 @@ data "terraform_remote_state" "pipeline" {
     key = "pipeline"
     region = "us-east-1"
     encrypt = true
-    dynamodb_table = "pet-store-state-lock"
+    dynamodb_table = "terraform-state-lock"
   }
 }

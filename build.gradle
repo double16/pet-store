@@ -30,17 +30,18 @@ buildscript {
         classpath "org.grails.plugins:hibernate5:${gormVersion-".RELEASE"}"
         classpath "com.bertramlabs.plugins:asset-pipeline-gradle:2.14.10"
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
-        classpath 'com.bmuschko:gradle-docker-plugin:3.2.5'
-        classpath 'com.netflix.nebula:gradle-lint-plugin:9.0.0'
+        classpath 'com.bmuschko:gradle-docker-plugin:3.2.7'
+        classpath 'com.netflix.nebula:gradle-lint-plugin:9.3.1'
         classpath 'com.github.ben-manes:gradle-versions-plugin:0.17.0'
-        classpath "jp.classmethod.aws:gradle-aws-plugin:0.36"
+        classpath "jp.classmethod.aws:gradle-aws-plugin:0.38"
     }
 }
 
 plugins {
-    id 'com.gradle.build-scan' version '1.12.1'
+    id 'com.gradle.build-scan' version '1.13.1'
     id 'com.craigburke.client-dependencies' version '1.4.0'
     id 'com.patdouble.awsecr' version '0.4.0'
+    id 'dk.danskespil.gradle.plugins.terraform' version '0.0.9' apply false
 }
 
 apply plugin:"eclipse"
@@ -57,6 +58,13 @@ apply plugin: 'nebula.lint'
 
 allprojects {
     apply plugin: 'com.github.ben-manes.versions'
+}
+
+configure(project(':terraform').subprojects) {
+    apply plugin: 'dk.danskespil.gradle.plugins.terraform'
+    [tasks.tfGet, tasks.tfPlan, tasks.tfValidate].each {
+        it.inputs.files fileTree("${projectDir}/modules")
+    }
 }
 
 version "0.1"
@@ -323,7 +331,7 @@ task webappDockerfile(type: Dockerfile) {
             'org.label-schema.license'   : "Apache-2.0",
             'org.label-schema.name'      : "Pet Store Application",
             'org.label-schema.url'       : "https://github.com/double16/pet-store",
-            'org.label-schema.vcs-ref'   : shortCommit,
+            'org.label-schema.vcs-ref'   : commit,
             'org.label-schema.vcs-type'  : 'git',
             'org.label-schema.vcs-url'   : "https://github.com/double16/pet-store.git"
     ])
@@ -336,14 +344,14 @@ task webappImage(type: DockerBuildImage) {
     inputs.file applicationFile
     dockerFile = webappDockerfile.destFile
     inputDir = dockerFile.parentFile
-    tag = "${repository}:${shortCommit ?: 'latest'}"
+    tags << "${repository}:${shortCommit}".toString()
+    tags << "${repository}:latest".toString()
 }
 
 task webappImagePublish(type: DockerPushImage) {
     group = "staging"
     dependsOn webappImage
-    imageName = repository
-    tag = shortCommit ?: 'latest'
+    imageName = webappImage.tags.first() - ~/:[^:]+$/
 }
 
 /*
@@ -370,7 +378,14 @@ task staticImage(type: DockerBuildImage) {
   dependsOn staticDockerfile
   dockerFile = staticDockerfile.destFile
   inputDir = staticDockerfile.destFile.parentFile
-  tag = "${repository}-site:${shortCommit ?: 'latest'}"
+  tags << "${repository}-site:${shortCommit}".toString()
+  tags << "${repository}-site:latest".toString()
+}
+
+task staticImagePublish(type: DockerPushImage) {
+    group = "staging"
+    dependsOn staticImage
+    imageName = staticImage.tags.first() - ~/:[^:]+$/
 }
 
 task staticSiteCreate(type: DockerCreateContainer) {
@@ -413,12 +428,12 @@ task ecsImageDefinitions {
         def data = [
                 [
                         name: 'app',
-                        imageUri: webappImage.tag,
+                        imageUri: webappImage.tags.first(),
                 ],
 /*
                 [
                         name: 'static-site',
-                        imageUri: staticImage.tag,
+                        imageUri: staticImage.tags.first(),
                 ]
 */
         ]
