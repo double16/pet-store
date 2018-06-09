@@ -31,9 +31,10 @@ buildscript {
         classpath "com.bertramlabs.plugins:asset-pipeline-gradle:2.14.10"
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
         classpath 'com.bmuschko:gradle-docker-plugin:3.2.7'
-        classpath 'com.netflix.nebula:gradle-lint-plugin:9.3.1'
+        classpath 'com.netflix.nebula:gradle-lint-plugin:9.0.0'
         classpath 'com.github.ben-manes:gradle-versions-plugin:0.17.0'
         classpath "jp.classmethod.aws:gradle-aws-plugin:0.38"
+        classpath "gradle.plugin.dk.danskespil.gradle.plugins:gradle-plugin-terraform:0.1.0"
     }
 }
 
@@ -41,7 +42,6 @@ plugins {
     id 'com.gradle.build-scan' version '1.13.1'
     id 'com.craigburke.client-dependencies' version '1.4.0'
     id 'com.patdouble.awsecr' version '0.4.0'
-    id 'dk.danskespil.gradle.plugins.terraform' version '0.0.9' apply false
 }
 
 apply plugin:"eclipse"
@@ -60,8 +60,25 @@ allprojects {
     apply plugin: 'com.github.ben-manes.versions'
 }
 
-configure(project(':terraform').subprojects) {
+configure(project(':terraform').subprojects) { subproject ->
     apply plugin: 'dk.danskespil.gradle.plugins.terraform'
+    tfValidate {
+        varfile(project(':terraform').file('common.tfvars'))
+    }
+    tfPlan {
+        varfile(project(':terraform').file('common.tfvars'))
+        out = new File(subproject.buildDir, 'plan-output.bin')
+        outAsText = new File(subproject.buildDir, 'plan-output.txt')
+        doLast {
+            if (!out.exists()) {
+                out.text = ''
+            }
+        }
+    }
+    tfApply {
+        plan = tfPlan.out
+        autoApprove = true
+    }
 }
 
 version "0.1"

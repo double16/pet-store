@@ -1,0 +1,1 @@
+tfPlan.dependsOn ':terraform:bootstrap:tfApply', ':terraform:network:tfApply', ':terraform:pipeline:tfApply'
