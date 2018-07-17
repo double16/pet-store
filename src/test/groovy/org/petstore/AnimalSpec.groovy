@@ -1,14 +1,10 @@
 package org.petstore
 
-import grails.test.mixin.TestFor
+import grails.testing.gorm.DomainUnitTest
 import spock.lang.Ignore
 import spock.lang.Specification
 
-/**
- * See the API for {@link grails.test.mixin.domain.DomainClassUnitTestMixin} for usage instructions
- */
-@TestFor(Animal)
-class AnimalSpec extends Specification {
+class AnimalSpec extends Specification implements DomainUnitTest<Animal> {
 
     def setup() {
     }

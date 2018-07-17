@@ -1,0 +1,33 @@
+version: 2
+
+jobs:
+    build:
+      docker:
+        - image: pdouble16/gradle-webapp-build-base:2018.06.2
+      environment:
+        - TERM: dumb
+        - GRADLE_USER_HOME: /home/gradle/.gradle
+
+      steps:
+        - checkout
+        - setup_remote_docker:
+            version: 18.03.0-ce
+
+        - restore_cache:
+            keys:
+            - v2-code-{{ .Branch }}-{{ checksum "build.gradle" }}-{{ checksum "staticsite/build.gradle" }}
+            - v2-code-{{ .Branch }}-
+
+        - run: ./gradlew :check :staticsite:check --scan
+
+        - save_cache:
+            key: v2-code-{{ .Branch }}-{{ checksum "build.gradle" }}-{{ checksum "staticsite/build.gradle" }}
+            paths:
+              - /home/gradle/docker/private
+              - /home/gradle/.gradle/native
+              - /home/gradle/.gradle/caches
+              - /home/gradle/.gradle/nodejs
+              - /home/gradle/.gradle/wrapper
+
+        - store_test_results:
+            path: build/test-results

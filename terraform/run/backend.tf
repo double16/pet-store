@@ -1,0 +1,13 @@
+terraform {
+  backend "s3" {
+    # interpolation is not allowed
+    profile = "pet-store_deployer"
+    bucket = "pet-store-state"
+    # we're using the same bitbucket for all state, so we need a unique key per directory
+    key = "run"
+    # forcing the region for the state bucket because we only want one
+    region = "us-east-1"
+    encrypt = true
+    dynamodb_table = "terraform-state-lock"
+  }
+}
