@@ -30,16 +30,16 @@ buildscript {
         classpath "org.grails.plugins:hibernate5:${gormVersion-".RELEASE"}"
         classpath "com.bertramlabs.plugins:asset-pipeline-gradle:2.14.10"
         classpath 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.2'
-        classpath 'com.bmuschko:gradle-docker-plugin:3.2.7'
+        classpath 'com.bmuschko:gradle-docker-plugin:3.3.6'
         classpath 'com.netflix.nebula:gradle-lint-plugin:9.0.0'
-        classpath 'com.github.ben-manes:gradle-versions-plugin:0.17.0'
+        classpath 'com.github.ben-manes:gradle-versions-plugin:0.20.0'
         classpath "jp.classmethod.aws:gradle-aws-plugin:0.38"
         classpath "gradle.plugin.dk.danskespil.gradle.plugins:gradle-plugin-terraform:0.1.0"
     }
 }
 
 plugins {
-    id 'com.gradle.build-scan' version '1.13.1'
+    id 'com.gradle.build-scan' version '1.15.1'
     id 'com.craigburke.client-dependencies' version '1.4.0'
     id 'com.patdouble.awsecr' version '0.4.0'
 }
