@@ -10,5 +10,4 @@ jdk:
 install:
   - ./gradlew dependencies
 script:
-  - ./gradlew :check -Dscan
-
+  - ./gradlew :check :staticsite:check --scan

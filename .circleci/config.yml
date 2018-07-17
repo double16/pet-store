@@ -11,17 +11,17 @@ jobs:
       steps:
         - checkout
         - setup_remote_docker:
-          version: 18.03.0-ce
+            version: 18.03.0-ce
 
         - restore_cache:
             keys:
-            - v2-code-{{ .Branch }}-{{ checksum "build.gradle" }}-{{ checksum "package.json" }}
+            - v2-code-{{ .Branch }}-{{ checksum "build.gradle" }}-{{ checksum "staticsite/build.gradle" }}
             - v2-code-{{ .Branch }}-
 
-        - run: ./gradlew check -Dscan
+        - run: ./gradlew :check :staticsite:check --scan
 
         - save_cache:
-            key: v2-code-{{ .Branch }}-{{ checksum "build.gradle" }}-{{ checksum "package.json" }}-{{ checksum "staticsite/build.gradle" }}
+            key: v2-code-{{ .Branch }}-{{ checksum "build.gradle" }}-{{ checksum "staticsite/build.gradle" }}
             paths:
               - /home/gradle/docker/private
               - /home/gradle/.gradle/native
