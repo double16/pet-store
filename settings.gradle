@@ -28,5 +28,5 @@ if (System.getenv('ARTIFACT_BUCKET')) {
     }
 }
 
-include 'staticsite'
+include 'staticsite', 'load-test'
 include 'terraform', 'terraform:bootstrap', 'terraform:network', 'terraform:pipeline', 'terraform:run'

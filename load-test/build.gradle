@@ -1,0 +1,70 @@
+buildscript {
+    repositories {
+        maven { url "https://dl.bintray.com/double16/plugins" }
+    }
+    dependencies {
+        classpath 'com.patdouble.jmeter:jmeter-gradle-plugin:1.1.1-4.0'
+        classpath "gradle.plugin.uk.co.automatictester:lightning-gradle-plugin:1.2.0"
+        classpath "de.undercouch:gradle-download-task:3.4.3"
+    }
+}
+
+plugins {
+    id "uk.co.automatictester.lightning" version "1.2.0"
+}
+
+apply plugin: "net.foragerr.jmeter"
+apply plugin: "de.undercouch.download"
+
+jmeter {
+    enableReports = true
+}
+
+lightningSettings {
+    testSetXml = file('src/test/jmeter/lightning.xml')
+}
+
+task websocketPlugin(type: Download) {
+    dependsOn 'jmInit'
+    group = 'jmeter'
+    description = 'Download JMeter WebSocket sampler'
+    src 'https://search.maven.org/remotecontent?filepath=net/luminis/jmeter/jmeter-websocket-samplers/1.2/jmeter-websocket-samplers-1.2.jar'
+    dest new File(project.buildDir, 'jmeter/lib/ext/jmeter-websocket-samplers-1.2.jar')
+    overwrite false
+}
+
+task distGraphPlugin(type: Download) {
+    dependsOn 'jmInit'
+    group = 'jmeter'
+    description = 'Download JMeter Distribution/Percentile Graphs'
+    src 'http://search.maven.org/remotecontent?filepath=kg/apc/jmeter-plugins-graphs-dist/2.0/jmeter-plugins-graphs-dist-2.0.jar'
+    dest new File(project.buildDir, 'jmeter/lib/ext/jmeter-plugins-graphs-dist-2.0.jar')
+    overwrite false
+}
+
+[jmGui, jmRun]*.dependsOn websocketPlugin, distGraphPlugin
+
+def configureJMeterUserProperties = {
+    URL url = new URL('http://localhost:8080/')
+    if (jmeter.jmUserProperties == null) {
+        jmeter.jmUserProperties = []
+    }
+    jmeter.jmUserProperties << "app_proto=${url.protocol}"
+    jmeter.jmUserProperties << "app_host=${url.host}"
+    jmeter.jmUserProperties << "app_port=${url.port}"
+    jmeter.jmUserProperties << "app_path=${url.path}"
+}
+jmRun.doFirst(configureJMeterUserProperties)
+jmRun.doLast {
+    project.lightningSettings.jmeterCsv = project.jmeter.jmResultFiles.first()
+}
+
+[report, verify]*.dependsOn jmRun
+verify.doLast {
+    File junitOrig = project.file('junit.xml')
+    File junitDest = new File(project.buildDir, "test-results/${project.name}/LOAD-junit.xml")
+    if (junitOrig.exists()) {
+        assert junitDest.parentFile.mkdirs()
+        junitOrig.renameTo(junitDest)
+    }
+}
